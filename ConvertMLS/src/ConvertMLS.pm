@@ -103,6 +103,8 @@ sub DoConvert {
 
     # clean up temp file
     unlink $dataFile;
+    
+    exec ("notepad.exe", $WTfileNT);
 }
 
 sub preProcInputFile {
@@ -773,7 +775,15 @@ sub CAAR_Resid {
     $stories =~ s/[^0-9\.]//ig;
     $outrec->{'Stories'} = $stories;
 
-    $design = $inrec->{'Design'};
+    my $designFullName  = $inrec->{'Design'};
+	$design = $designFullName;
+	if ( $designFullName =~ /Arts & Crafts/ig ) {
+		$design = "Craftsman";
+	}
+	elsif ( $designFullName =~ /Contemporary/ig ) {
+		$design = "Contemp";
+	}
+	
     $design =~ tr/ //ds;
     if ( $proptype =~ /Detached/ig ) {
         $design_uad = 'DT' . $stories . ';' . $design;
@@ -1186,9 +1196,11 @@ sub CAAR_Resid {
     #-----------------------------------------
 
     # Bedrooms
-    my $bedroomstot = $inrec->{'#Beds'};
+	my $bedroomstot = $inrec->{'#Beds'};
+	my $bedroomsbg = $inrec->{'#BedsBG'};
+	my $bedroomsAG = $bedroomstot - $bedroomsbg;
 
-    $outrec->{'Beds'} = $bedrooms;
+	$outrec->{'Beds'} = $bedrooms;
 
     #-----------------------------------------
 
