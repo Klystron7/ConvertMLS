@@ -1,10 +1,10 @@
-package Convert::MLS::Paragon;
+package My::ConvertMLS;
 use strict;
 use warnings;
 #no warnings 'deprecated';
 
 use Exporter qw(import);
-our @EXPORT_OK = qw(doConvert);
+our @EXPORT_OK = qw(DoConvert);
 
 # From extab8
 use Tie::IxHash();
@@ -19,27 +19,28 @@ use IO::Handle();
 use Time::localtime qw( localtime );
 use Tk qw( MainLoop exit );
 use Date::Calc qw[check_date];
+use Wx;
 
 # Uncomment block for testing
 #------------------------------------------------------------
-my $top = new MainWindow;
-$top->withdraw();
-
-#remove to print# print "Input file: $ARGV[0]\n";
-my $infilename = undef;
-if ( $ARGV[0] ) {
-    $infilename = $ARGV[0];
-}
-else {
-    #get file for processing
-    #$dir = "C:\\Documents and Settings\\Ernest\\workspace\\extab6uad\\CAAR-Paragon Conversion";
-    #$dir      = "X:\\";
-    my $dir = "C:\\Users\\Ernest\\eclipse-workspace\\Extab7";
-    $infilename = $top->getOpenFile( -initialdir => $dir );
-    
-}
-
-DoConvert($infilename);
+#my $top = new MainWindow;
+#$top->withdraw();
+#
+##remove to print# print "Input file: $ARGV[0]\n";
+#my $infilename = undef;
+#if ( $ARGV[0] ) {
+#    $infilename = $ARGV[0];
+#}
+#else {
+#    #get file for processing
+#    #$dir = "C:\\Documents and Settings\\Ernest\\workspace\\extab6uad\\CAAR-Paragon Conversion";
+#    #$dir      = "X:\\";
+#    my $dir = "C:\\Users\\Ernest\\eclipse-workspace\\Extab7";
+#    $infilename = $top->getOpenFile( -initialdir => $dir );
+#    
+#}
+#
+#DoConvert($infilename);
 
 #MainLoop;
 
@@ -47,7 +48,8 @@ DoConvert($infilename);
 
 sub DoConvert {
 
-    my $inputfilename = $_[0];
+    #my $inputfilename = $_[0];
+    my ($inputfilename, $status) = @_;
 
     #process input file
     # returns: handle to output file, preprocessed temp data file, data source
@@ -92,6 +94,8 @@ sub DoConvert {
             #continue
         }
         $pnum = $pnum + 1;
+        $status->AppendText($rhash->{'Address1'});
+        $status->AppendText("\n");
 
         #print('Comp ',$pnum);
         #print('\n');
@@ -104,7 +108,12 @@ sub DoConvert {
     # clean up temp file
     unlink $dataFile;
     
-    exec ("notepad.exe", $WTfileNT);
+    #open ("notepad.exe", $WTfileNT);
+    my $cmd = "notepad.exe ".$WTfileNT;
+    my($stat, $output) = Wx::ExecuteCommand($cmd);
+    
+    
+    
 }
 
 sub preProcInputFile {
