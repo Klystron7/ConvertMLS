@@ -49,7 +49,7 @@ use Wx;
 sub DoConvert {
 
     #my $inputfilename = $_[0];
-    my ($inputfilename, $status) = @_;
+    my ($inputfilename, $cbOpts, $status) = @_;
 
     #process input file
     # returns: handle to output file, preprocessed temp data file, data source
@@ -108,12 +108,7 @@ sub DoConvert {
     # clean up temp file
     unlink $dataFile;
     
-    #open ("notepad.exe", $WTfileNT);
-    my $cmd = "notepad.exe ".$WTfileNT;
-    my($stat, $output) = Wx::ExecuteCommand($cmd);
-    
-    
-    
+	return $WTfileNT;
 }
 
 sub preProcInputFile {
