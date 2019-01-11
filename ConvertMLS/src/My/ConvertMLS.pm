@@ -50,6 +50,12 @@ sub DoConvert {
 
     #my $inputfilename = $_[0];
     my ($inputfilename, $cbOpts, $status) = @_;
+    
+    my $Scmp1004 = $cbOpts->[0];
+    my $Rcmp1007 = $cbOpts->[1];
+    my $Scmp1025 = $cbOpts->[2];
+    my $Rcmp1025 = $cbOpts->[3];
+    my $ScmpDskt = $cbOpts->[4];
 
     #process input file
     # returns: handle to output file, preprocessed temp data file, data source
@@ -119,6 +125,7 @@ sub preProcInputFile {
 
     $csv_file = $filename;
 
+    # get first line of MLS input file (field names)
     my $INPUTFILE;
     open( $INPUTFILE, '<', $csv_file );
     my $firstline;
@@ -141,8 +148,7 @@ sub preProcInputFile {
 
     #convert comma delimited to tab delimited
     my $csv = Text::CSV->new( { binary => 1 } );
-    my $tsv
-        = Text::CSV->new( { binary => 1, sep_char => "\t", eol => "\n" } );
+    my $tsv = Text::CSV->new( { binary => 1, sep_char => "\t", eol => "\n" } );
 
     #set up for temporary output file
     ( my $base, $dir, my $ext ) = fileparse( $csv_file, '\..*' );
@@ -4217,7 +4223,11 @@ sub checkRcdSource {
     # CVAR: Whaley
 
     my $line = shift;
-    if ( ( $line =~ /CAAR Lockbox/ig ) ) {
+    my $var = qr/CAAR Lockbox/;
+#    if ( ( $line =~ /CAAR Lockbox/ig ) ) {
+#        return ("CAAR");
+#    }
+    if ( ( $line =~ m/$var/ig ) ) {
         return ("CAAR");
     }
     elsif ( $line =~ /abovegradeareafinished/ig ) {
@@ -4706,19 +4716,6 @@ sub getEditBoxTxt {
     #print "The result from Calculator is $buffer\n";
     return $buffer;
 }
-
-#sub errmsgbox {
-#
-#    #$mbmsg   = "Test Message";
-#    #$mbtitle = "Message Box Test";
-#    #$mbflags = MB_OK | MB_ICONWARNING | MB_TOPMOST | MB_SYSTEMMODAL;
-#    #$return  = Win32::GUI::MessageBox( 0, "$mbmsg", "$mbtitle", $mbflags );
-#
-#    my $mbmsg   = shift;
-#    my $mbtitle = "Error";
-#    my $mbflags = MB_OK | MB_ICONWARNING | MB_TOPMOST | MB_SYSTEMMODAL;
-#    my $return  = Win32::GUI::MessageBox( 0, "$mbmsg", "$mbtitle", $mbflags );
-#}
 
 sub USA_Format {
 

@@ -64,8 +64,8 @@ sub new {
     Wx::Event::EVT_TEXT_MAXLEN($self, $self->{text_ctrl_1}->GetId, $self->can('textmaxlen'));
     Wx::Event::EVT_TEXT_URL($self, $self->{text_ctrl_1}->GetId, $self->can('texturl'));
     
-    my @cbOptions = [0,0,0,0,0];
-    $self->{cbOptions} = \@cbOptions;
+    my @cbO = (0,0,0,0,0);
+    $self->{cbOptions} = \@cbO;
 
     #$self->{Open_file}->Enable(0);
     
@@ -140,14 +140,15 @@ sub __do_layout {
 sub cb1 {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::cb1 <event_handler>
+    
     if ( $event->IsChecked() ) {
     	$self->{cbOptions}[0] = 1;
     } else {
     	$self->{cbOptions}[0] = 0;
     }
     
-    warn "Event handler (cb1) not implemented";
-    $event->Skip;
+    #warn "Event handler (cb1) not implemented";
+    #$event->Skip;
     # end wxGlade
 }
 
@@ -155,13 +156,15 @@ sub cb1 {
 sub cb2 {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::cb2 <event_handler>
-        if ( $event->IsChecked() ) {
+    
+    if ( $event->IsChecked() ) {
     	$self->{cbOptions}[1] = 1;
     } else {
     	$self->{cbOptions}[1] = 0;
     }
-    warn "Event handler (cb2) not implemented";
-    $event->Skip;
+    
+    #warn "Event handler (cb2) not implemented";
+    #$event->Skip;
     # end wxGlade
 }
 
@@ -169,13 +172,15 @@ sub cb2 {
 sub cb3 {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::cb3 <event_handler>
-        if ( $event->IsChecked() ) {
+    
+    if ( $event->IsChecked() ) {
     	$self->{cbOptions}[2] = 1;
     } else {
     	$self->{cbOptions}[2] = 0;
     }
-    warn "Event handler (cb3) not implemented";
-    $event->Skip;
+    
+    #warn "Event handler (cb3) not implemented";
+    #$event->Skip;
     # end wxGlade
 }
 
@@ -183,13 +188,15 @@ sub cb3 {
 sub cb4 {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::cb4 <event_handler>
-        if ( $event->IsChecked() ) {
+    
+    if ( $event->IsChecked() ) {
     	$self->{cbOptions}[3] = 1;
     } else {
     	$self->{cbOptions}[3] = 0;
     }
-    warn "Event handler (cb4) not implemented";
-    $event->Skip;
+    
+    #warn "Event handler (cb4) not implemented";
+    #$event->Skip;
     # end wxGlade
 }
 
@@ -197,13 +204,15 @@ sub cb4 {
 sub cb5 {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::cb5 <event_handler>
-        if ( $event->IsChecked() ) {
+    
+    if ( $event->IsChecked() ) {
     	$self->{cbOptions}[4] = 1;
     } else {
     	$self->{cbOptions}[4] = 0;
     }
-    warn "Event handler (cb5) not implemented";
-    $event->Skip;
+    
+    #warn "Event handler (cb5) not implemented";
+    #$event->Skip;
     # end wxGlade
 }
 
