@@ -1,7 +1,6 @@
 package My::ConvertMLS;
 use strict;
 use warnings;
-#no warnings 'deprecated';
 
 use Exporter qw(import);
 our @EXPORT_OK = qw(DoConvert);
@@ -100,7 +99,7 @@ sub DoConvert {
             #continue
         }
         $pnum = $pnum + 1;
-        $status->AppendText($rhash->{'Address1'});
+        $status->AppendText($rhash->{"Address1\n"});
         $status->AppendText("\n");
 
         #print('Comp ',$pnum);
