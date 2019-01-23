@@ -21,7 +21,8 @@ use base qw(Wx::Frame);
 use strict;
 use Data::Dumper qw(Dumper);
 
-use My::ConvertMLS qw(DoConvert);
+#use My::ConvertMLS qw(DoConvert);
+use My::MLStoText qw(DoConvert);
 
 sub new {
     my( $self, $parent, $id, $title, $pos, $size, $style, $name ) = @_;
@@ -312,19 +313,28 @@ sub OpenFile {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::OpenFile <event_handler>
     
+    # make sure that a processsing option is selected.
+    my @cbar = @{$self->{cbOptions}};
+    my $selopt = grep /1/, @cbar ;
+    if ( $selopt == 0 ){
+            $self->msg_dialog();
+            $event->Skip;
+            return;
+    }
+    
     $self->{Open_file}->Enable(0);
     my $fileDialog       = Wx::FileDialog->new( $self, "Select MLS File", "", "", "", wxFD_OPEN );
     my $fileDialogStatus = $fileDialog->ShowModal();
     my $filename         = $fileDialog->GetPath();
 
-    $self->{text_ctrl_1}->AppendText("Processing Data\n");
+    $self->{text_ctrl_1}->AppendText("Processing Data\n\n");
 
     my $WTfileNm = DoConvert( $filename, $self->{cbOptions}, $self->{text_ctrl_1} );
 
     my $cmd = "notepad.exe ".$WTfileNm;
     my ( $stat, $output ) = Wx::ExecuteCommand($cmd);
 
-    $self->{text_ctrl_1}->WriteText("Finished\n");
+    $self->{text_ctrl_1}->WriteText("\nFinished\n");
     $self->{Open_file}->Enable(1);    
     
     #warn "Event handler (OpenFile) not implemented";
@@ -409,6 +419,18 @@ sub unSet_allCB {
 
 }
 
+sub msg_dialog {
+    my( $self ) = @_;
+    my $info = Wx::AboutDialogInfo->new;
+
+    $info->SetName( 'Select Option' );
+    #$info->SetVersion( '0.01 alpha 12' );
+    $info->SetDescription( 'Select One Processing Option' );
+    #$info->SetCopyright( '(c) 2001-today Me <me@test.com>' );
+
+    Wx::AboutBox( $info );
+}
+
 
 # end of class MyFrame
 
@@ -439,3 +461,5 @@ unless(caller){
     my $app = MyApp->new();
     $app->MainLoop();
 }
+
+

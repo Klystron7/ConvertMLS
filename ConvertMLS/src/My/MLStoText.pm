@@ -17,15 +17,19 @@ use Time::localtime qw( localtime );
 use Tk qw( MainLoop exit );
 use Date::Calc qw[check_date];
 use List::MoreUtils qw(first_index);
+use Time::Piece;
 use Wx;
 
-DoConvert();
+#DoConvert();
 
 sub DoConvert {
 
-    my $filename  = "C:\\Users\\Ernest\\git\\ConvertMLS\\ConvertMLS\\Comp4.csv";
-    my @cbOptions = ( 1, 0, 0, 0, 0 );
-    my $status    = 0;
+    my ($filename, $cbOpt, $status) = @_;
+    my @cbOptions = @$cbOpt;
+    
+    #my $filename  = "C:\\Users\\Ernest\\git\\ConvertMLS\\ConvertMLS\\Condo1.csv";
+    #my @cbOptions = ( 0, 1, 0, 0, 0 );
+    #my $status    = 0;
 
     # check input options and compare with file data
     # return output file name and function ptr for processing.
@@ -40,10 +44,10 @@ sub DoConvert {
     #process data
     ( my $pRes ) = process_data( $dataFileNm, $WTfileName, $proFuncPt, $status );
 
-    my $cmd = "notepad.exe ".$WTfileName;
-    my ( $stat, $output ) = Wx::ExecuteCommand($cmd);
-
-    return 0;
+    #my $cmd = "notepad.exe ".$WTfileName;
+    #my ( $stat, $output ) = Wx::ExecuteCommand($cmd);
+    
+    return $WTfileName;
 
 }
 
@@ -187,7 +191,7 @@ sub process_data {
 
     # loop over each input record and process
     # get each record (row from file) as a hashref
-    my $pnum = 0;
+    my $pnum = 1;
     while ( my $record = $p->fetchrow_hashref ) {
 
         # Get a new record with only tabs
@@ -197,7 +201,10 @@ sub process_data {
         $func->( $record, $currRec, $WToutfile );
 
         # update status on main window
-        #$stat->AppendText($currRec->{"Address1\n"});
+        my $cRec = "Comp #".$pnum++.": ".$currRec->{'Address1'}."\n";
+        $stat->AppendText($cRec);
+        
+        print $WToutfile ("\n");
 
     }
 
@@ -226,7 +233,7 @@ sub process_comp_1073 {
     my ( $mlsrec, $outdata, $outfile ) = @_;
 
     CAAR_Resid( $mlsrec, $outdata );
-    CAAR_Resid_Text( $outdata, $outfile );
+    CAAR_Condo( $outdata, $outfile );
 
     return 0;
 }
@@ -1157,17 +1164,21 @@ sub CAAR_Resid {
 
     # Age
     my $age = 0;
+    my $compyear = int($inrec->{'YearBuilt'});
+    if ( $soldstatus == 0 ) {
+        # Age calculated from year sold
+        my $sdate = $inrec->{'Close Date'};
+        my @da    = ( $sdate =~ m/(\d+)/g );
+        $age = $da[2] - $compyear;
 
-    #$age = $time{'yyyy'} - $inrec->{'Year Built'};
-
-    # Age calculated from current year
-    #$age = localtime->year + 1900 - $inrec->{'YearBuilt'};
-
-    # Age calculated from year sold
-    my $sdate = $inrec->{'Close Date'};
-    my @da    = ( $sdate =~ m/(\d+)/g );
-    $age = $da[2] - $inrec->{'YearBuilt'};
-
+    }
+    #elsif (( $soldstatus == 1 ) || ( $soldstatus == 2 ) || ( $soldstatus == 3 ) )
+    elsif (grep {$soldstatus eq $_} qw(1 2 3))
+    {
+        my $t = Time::Piece->new();
+        my $year = $t->year;
+        $age = $year - $compyear;
+    }
     $outrec->{'Age'} = $age;
 
     #-----------------------------------------
@@ -1660,7 +1671,8 @@ sub CAAR_Resid {
     # SqFt Total
     # SqFt Unfin Total
 
-    my $sfAGFin = ( $inrec->{'AGFin'} =~ s/,// );
+    my $sfAGFin = $inrec->{'AGFin'};
+    $sfAGFin =~ s/,//g ;
     my $sfAGTot = $inrec->{'AGTotSF'};
     my $sfAGUnF = $inrec->{'AGUnfin'};
     my $sfBGFin = $inrec->{'BGFin'};
@@ -1967,12 +1979,11 @@ sub CAAR_Resid {
     #-----------------------------------------
 
     #condo specific
-
     my $aprop = $inrec->{'PropType'};
     if ( $aprop =~ /Condo/ig ) {
 
         # Unit Number
-        my $unitnum = $inrec->{'Unit#'};
+        my $unitnum = $inrec->{'Unit #'};
         $outrec->{'Unitnum'} = $unitnum;
 
         # Amenities
@@ -1994,11 +2005,16 @@ sub CAAR_Resid {
         # 8 and higher: High-rise
 
         # address modified with unit number
-        $outrec->{'Address1'} = $outrec->{'Address1'}.", #".$unitnum;
+        $outrec->{'Address1'} = $outrec->{'Address1'};
+        $outrec->{'Address2'} = $unitnum.$outrec->{'Address2'};
 
         # location set to city
 
         # subdivision set to project name
+        my $projectname = titleCap( $inrec->{'Subdivision'} );
+        $projectname =~ s/ \(.*//;
+        $outrec->{'ProjectName'} = $projectname;
+        $outrec->{'HOAFee'} = $inrec->{'AssnFee'};
 
     }
 
@@ -2113,6 +2129,117 @@ sub CAAR_Resid_Text {
 
 }
 
+sub CAAR_Condo {
+    
+    # output comparable as text file for direct copy into Total
+    my ($outrec)  = shift;
+    my ($outfile) = shift;
+
+    my $or = $outrec;
+    my $w = sprintf( '%c', 8 );
+    
+    #CONDO
+
+    # Line  Form Field                          input field
+    #   1   137 Green Turtle Ln                street address (from MLS)
+    #   2   5, Charlottesville, VA 22901       unit #, street address
+    #   3   5CharlottesvilleVA22901         unit #, city, state, zip
+    #   4   Turtle Creek Condos                Project Name
+    #   5   7                                   Phase
+    #   6   Proximity
+    #   7   Sale Price
+    #   8   Price per square foot
+    #   9   CAARMLS#;DOM
+    #   10  CAARMLS#DOM
+    #   11  Tax Records
+    #   12  sale type
+    #   13  ArmLthCash;0
+    #   14  Cash0
+    #   13  s02/17;c01/17
+    #   14  Settled saleX07/1707/17
+    #   15  N;Res;
+    #   16  NeutralResidential
+    #   17  Fee Simple
+    #   18  HOA Fee
+    #   19  Common Elements
+    #   20  Rec Facilities
+    #   19  N;Res;
+    #   20  NeutralResidential
+    #   21  DT2;Colonial
+    #   22  X2Colonial
+    #   23  Q3
+    #   24  10
+    #   25  C3
+    #   26  742.1
+    #   27  2,500
+    #   28  2500sf1000sfwo
+    #   29  25001000Walk-out
+    #   30  1rr1br1.1ba1o
+    #   31  111.11
+    #   32  Average
+    #   33  FWA/CAC
+    #   34  InsulWnd&Drs
+    #   35  2ga2dw
+    #   36  22
+    #   37  CvP,Deck
+    #   38  1 Fireplace
+ 
+    # Additional fields requred for condo specific:
+    # unit #, project name (subdivison), project phase (not available), HOA Fee
+    # common elements, rec facilities
+ 
+
+    #pre-processing of some fields for text output
+    my $uadexp1 = $or->{'FinFullNm'}.$w.$or->{'FinOther'}.$w.$or->{'Conc'};
+    my $datestr = $or->{'SaleStatus'}.$w."X".$w.$w.$or->{'ContDate'}.$w.$or->{'SaleDate'}.$w.$w.$w.$w;
+    my $design  = "x".$w.$w.$w.$or->{'Stories'}.$w.$or->{'Design'}.$w.$w;
+    my $rooms   = $or->{'Rooms'}.$w.$or->{'Beds'}.$w.$or->{'Baths'}.$w.$w;
+
+    tie my %comp    => 'Tie::IxHash',
+        address1    => $or->{'Address1'}.$w,
+        address2    => $or->{'Address2'}.$w,
+        citystzip   => $or->{'Unitnum'}.$w.$or->{'City'}.$w.$or->{'State'}.$w.$or->{'Zip'}.$w,
+        project     => $or->{'ProjectName'}.$w,
+        phase       => $w,
+        proximity   => $w,
+        saleprice   => $or->{'SalePrice'}.$w,
+        saleprgla   => $w,
+        datasrc     => $or->{'DataSource1'}.$w."CAARMLS #".$or->{'MLNumber'}.$w.$or->{'DOM'}.$w,
+        versrc      => $or->{'DataSource2'}.$w,
+        saletype    => $or->{'FinanceConcessions1'}.$w.$w,
+        finconc     => $or->{'FinanceConcessions2'}.$w.$uadexp1.$w.$w,
+        datesale    => $or->{'SaleDateFormatted'}.$w.$datestr,
+        location    => "N;Res".$w."Neutral".$w."Residential".$w.$w.$w.$w.$w,
+        lsorfeesim  => "Fee Simple".$w.$w,
+        hoafee      => $or->{'HOAFee'}.$w.$w,
+        commonelem  => $w.$w,
+        recfacil    => $w.$w,
+        floorloc    => $w.$w.$w,
+        view        => "N;Res;".$w."Neutral".$w."Residential".$w.$w.$w.$w.$w,
+        designstyle => $w.$w.$w.$w.$w.$w.$w.$w.$w.$w,
+        quality     => $or->{'DesignConstrQual'}.$w.$w,
+        age         => $or->{'Age'}.$w.$w,
+        condition   => $or->{'AgeCondition1'}.$w.$w.$w,
+        roomcnt     => $rooms,
+        gla         => $or->{'SqFt'}.$w.$w,
+        basement    => $or->{'Basement1'}.$w.$or->{'Basement1Txt'}.$w.$w,
+        basementrm  => $or->{'Basement2'}.$w.$or->{'Basement2Txt'}.$w.$w,
+        funcutil    => "Average".$w.$w,
+        heatcool    => $or->{'CoolingType'}.$w.$w,
+        energyeff   => $or->{'EnergyEfficiencies1'}.$w.$w,
+        garage      => $or->{'CarStorage1'}.$w.$w,
+        pchpatdk    => $or->{'FencePorchPatio2'}.$w.$w,
+        fireplace   => $or->{'ExtraCompInfo1'}.$w.$w;
+
+    my $x = 1;
+
+    #print $outfile "\n";
+    while ( my ( $key, $value ) = each(%comp) ) {
+        print $outfile ($value);
+    }
+    print $outfile ("\n");  
+}
+
 sub WTrecord {
 
     # output record
@@ -2216,7 +2343,15 @@ sub printFields {
     print $localfile "\n";
 }
 
-sub setifdef { $_[0] = $_[1] if defined( $_[1] ) }
+sub USA_Format {
+
+    ( my $n = shift ) =~ s/\G(\d{1,3})(?=(?:\d\d\d)+(?:\.|$))/$1,/g;
+    return "\$$n";
+}
+
+sub setifdef { 
+    $_[0] = $_[1] if defined( $_[1] ) 
+}
 
 sub hello {
     my ( $in1, $in2 ) = @_;
