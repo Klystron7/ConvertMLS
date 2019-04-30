@@ -13,9 +13,9 @@ use Text::CSV();
 use File::Basename qw( fileparse );
 use Math::Round qw( round );
 use IO::Handle();
-use Time::localtime qw( localtime );
+#use Time::localtime qw( localtime );
 use Tk qw( MainLoop exit );
-use Date::Calc qw[check_date];
+use Date::Calc qw(check_date Add_Delta_Days);
 use List::MoreUtils qw(first_index);
 use Time::Piece;
 use Wx;
@@ -24,9 +24,9 @@ use Wx;
 
 sub DoConvert {
 
-    my ($filename, $cbOpt, $status) = @_;
+    my ( $filename, $cbOpt, $status ) = @_;
     my @cbOptions = @$cbOpt;
-    
+
     #my $filename  = "C:\\Users\\Ernest\\git\\ConvertMLS\\ConvertMLS\\Condo1.csv";
     #my @cbOptions = ( 0, 1, 0, 0, 0 );
     #my $status    = 0;
@@ -46,7 +46,7 @@ sub DoConvert {
 
     #my $cmd = "notepad.exe ".$WTfileName;
     #my ( $stat, $output ) = Wx::ExecuteCommand($cmd);
-    
+
     return $WTfileName;
 
 }
@@ -203,7 +203,7 @@ sub process_data {
         # update status on main window
         my $cRec = "Comp #".$pnum++.": ".$currRec->{'Address1'}."\n";
         $stat->AppendText($cRec);
-        
+
         print $WToutfile ("\n");
 
     }
@@ -242,29 +242,29 @@ sub process_rent_1007 {
 
     my ( $inrec, $outdata, $outfile ) = @_;
 
-    my $wtline = sprintf( '%c', 8 );
+    my $w = sprintf( '%c', 8 );
 
     # Line 	Form field			input field 													output
-    #	1	Address line 1		street address	(from MLS)								street address	$wtline
-    #	2	Address	line 2		city, state, zip (from MLS)								city state zip $wtline
-    #	3	proximity line 1			n/a												$wtline
-    #	3	proximity line 2			n/a												$wtline
-    #	4	date lease begins	sold date to next half month or month (from MLS)		date $wtline
-    #	5	date lease ends		1-year or lease required								date $wtline
-    #	6	monthly rent		sold price		(from MLS)								price $wtline
-    #	7	less util,furn				n/a												3x($wtline)
-    #	8	Adjusted rent		sold price		(from MLS)								price $wtline
-    #	9	Data Sourc			"Tax Recds/MLS"	(standard)								"Tax Recds/MLS" 6x($wtline)
-    #	10	Location			Location (from MLS)										Location 2x($wtline)
-    #	11	View				View (from MLS)											View 2x($wtline)
-    #	12	Design style		Number of stories (from MLS)							Stories 4x($wtline)
-    #	13	Age					Age (calculated from MLS)								Age 2x($wtline)
-    #	14	Condition			"Average"												"Average" 2x($wtline)
-    #	15	Room count			Total,Beds,Baths										Total,$wtline,Beds,$wtline,Baths,3x($wtline)
-    #   16	GLA					Square feet (MLS)										square feet 3x($wtline)
-    #   17	Other				Basement/Finish(MLS)									Basement/finished 2x($wtline)
-    #   18	Other				"n/a"													"n/a" 2x($wtline)
-    #   19	Other				Parking (MLS)											Parking 4x($wtline)
+    #	1	Address line 1		street address	(from MLS)								street address	$w
+    #	2	Address	line 2		city, state, zip (from MLS)								city state zip $w
+    #	3	proximity line 1			n/a												$w
+    #	3	proximity line 2			n/a												$w
+    #	4	date lease begins	sold date to next half month or month (from MLS)		date $w
+    #	5	date lease ends		1-year or lease required								date $w
+    #	6	monthly rent		sold price		(from MLS)								price $w
+    #	7	less util,furn				n/a												3x($w)
+    #	8	Adjusted rent		sold price		(from MLS)								price $w
+    #	9	Data Sourc			"Tax Recds/MLS"	(standard)								"Tax Recds/MLS" 6x($w)
+    #	10	Location			Location (from MLS)										Location 2x($w)
+    #	11	View				View (from MLS)											View 2x($w)
+    #	12	Design style		Number of stories (from MLS)							Stories 4x($w)
+    #	13	Age					Age (calculated from MLS)								Age 2x($w)
+    #	14	Condition			"Average"												"Average" 2x($w)
+    #	15	Room count			Total,Beds,Baths										Total,$w,Beds,$w,Baths,3x($w)
+    #   16	GLA					Square feet (MLS)										square feet 3x($w)
+    #   17	Other				Basement/Finish(MLS)									Basement/finished 2x($w)
+    #   18	Other				"n/a"													"n/a" 2x($w)
+    #   19	Other				Parking (MLS)											Parking 4x($w)
 
     # format for 1007 rent schedule form
     tie my %rental  => 'Tie::IxHash',
@@ -290,8 +290,8 @@ sub process_rent_1007 {
         other3      => '';
 
     #3 Street Name Preprocessing
-    my $fullStreetName = titleCap( $inrec->{'Street Name'} );
-    $fullStreetName =~ s/\(.*//;    #remove parens
+    my $fullStreetName = titleCap( $inrec->{'Address'} );
+    $fullStreetName =~ s/ \(.*//;    #remove parens
 
     my $streetName = $fullStreetName;
     if ( $streetName =~ m/( +[nsew] *$| +[ns][ew] *$)/ig ) {
@@ -307,132 +307,100 @@ sub process_rent_1007 {
     $streetName =~ s/$streetSuffix//;
 
     #6 Address 1
-    my $streetnum = $inrec->{'Street Num'};
-    my $address1  = "$streetnum $fullStreetName";
+    #my $streetnum = $inrec->{'Street Num'};
+    #my $address1  = "$streetnum $fullStreetName";
+    my $address1 = $fullStreetName;
 
     #7 Address 2
     my $city = $inrec->{'City'};
-    $city = titleCap( $city );
+    $city = titleCap($city);
     $city =~ s/\(.*//;
     $city =~ s/\s+$//;
     my $state    = $inrec->{'State'};
     my $zip      = $inrec->{'Zip'};
     my $address2 = $city.", ".$state." ".$zip;
 
-    $rental{'address1'} = $address1.$wtline;
-    $rental{'address2'} = $address2.$wtline;
+    $rental{'address1'} = $address1.$w;
+    $rental{'address2'} = $address2.$w;
 
     # proximity
-    $rental{'prox1'} = $wtline;
-    $rental{'prox2'} = $wtline;
+    $rental{'prox1'} = $w;
+    $rental{'prox2'} = $w;
 
     # lease begin date
-    my $indate = $inrec->{'Sold/Leased Date'};
-    my @da     = ( $indate =~ m/(\d+)/g );
-    my $mo     = $da[0];
-    my $day    = $da[1];
-    my $yr     = $da[2];
-    if ( $day >= 2 && $day <= 15 ) {
-        $day = 15;
-    }
-    elsif ( $day >= 16 ) {
-        $day = 1;
-        $mo  = $mo + 1;
-        if ( $mo == 13 ) {
-            $mo = 1;
-            $yr = $yr + 1;
-        }
-    }
+    my $indate    = $inrec->{'LeasDate'};
+    my @da        = ( $indate =~ m/(\d+)/g );
+    my $mo        = $da[0];
+    my $day       = $da[1];
+    my $yr        = $da[2];
     my $begindate = $mo."/".$day."/".$yr;
-    $rental{'begindate'} = $begindate.$wtline;
+    $rental{'begindate'} = $begindate.$w;
 
-    # lease end date
+    my $leaseterm = $inrec->{'LeaseTerm'};
+    my $enddate;
 
-    #		Lease Required
-    #		Lease Required
-    #		Lease Required, Short Term
-    #		1-year
-    #
-    #		Lease Required
-    #		Lease Required, 1-year
-    #		Lease Required, 1-year
-    #		Lease Required, 1-year
-    #		Lease Required, Short Term
-    #		Lease Required, Short Term
-
-    my $leaseterm = $inrec->{'Lease Term'};
-    my $enddate   = "(*) Lease term not specified";
-    if ( $leaseterm =~ /1-year|^$/ig ) {
-        if ( $day == 15 ) {
-            $day     = 14;
-            $yr      = $yr + 1;
-            $enddate = $mo."/".$day."/".$yr;
-        }
-        elsif ( $day == 1 ) {
-            $day = 31;
-            if ( $mo =~ /5|7|10|12/ig ) {
-                $day = 30;
-            }
-            $mo      = $mo - 1;
-            $yr      = $yr + 1;
-            $enddate = $mo."/".$day."/".$yr;
-        }
-        else {
-
-        }
+    if ( not defined $leaseterm ) {
+        $enddate = "Lease term not specified";
+    }
+    elsif ( $leaseterm eq '' ) {
+        $enddate = "Lease term not specified";
+    }
+    elsif ( $leaseterm =~ /1-year|^$/ig ) {
+        my ( $yr1, $mo1, $day1 ) = Add_Delta_Days( $yr, $mo, $day, 364 );
+        $enddate = $mo1."/".$day1."/".$yr1;
     }
     else {
-        $enddate = "(*) Lease term not specified";
+        $enddate = $leaseterm;
     }
-    $rental{'enddate'} = $enddate.$wtline;
+
+    $rental{'enddate'} = $enddate.$w;
 
     # monthly rent
-    my $rentmon = $inrec->{'Sold/Leased Price'};
-    $rental{'rentmon'} = $rentmon.$wtline;
+    my $rentmon = $inrec->{'Lease Amt'};
+    $rental{'rentmon'} = $rentmon.$w;
 
     # lessutil
-    $rental{'lesutilfurn'} = $wtline.$wtline;
+    $rental{'lesutilfurn'} = $w.$w;
 
     # adj rent
-    $rental{'rentadj'} = $rentmon.$wtline;
+    $rental{'rentadj'} = $rentmon.$w;
 
     # datasrc
     # ML Number
     my $mlnumber = '';
-    $mlnumber = $inrec->{'MLS Number'};
-    $rental{'datasrc'} = "CAARMLS#".$mlnumber.$wtline."Tax Records".$wtline."None".$wtline.$wtline.$wtline.$wtline;
+    $mlnumber = $inrec->{'MLS #'};
+    $rental{'datasrc'} = "CAARMLS#".$mlnumber.$w."Tax Records".$w."None".$w.$w.$w.$w;
 
     # location
     my $location = '';
-    my $subdiv   = $inrec->{'Subdivision'};
+    my $subdiv   = $inrec->{'Subdivisn'};
     if ( $subdiv =~ m/NONE|^$/ig ) {
-        $location = titleCase($city);
+        $location = titleCap($city);
     }
     else {
-        $location = titleCase($subdiv);
+        $location = titleCap($subdiv);
     }
-    $rental{'location'} = $location.$wtline.$wtline;
+    $rental{'location'} = $location.$w.$w;
 
     # view
     my $view = "Residential";
-    $rental{'view'} = $view.$wtline.$wtline;
+    $rental{'view'} = $view.$w.$w;
 
     # design
-    my $design = $inrec->{'Stories'};
-    $rental{'design'} = $design.$wtline.$wtline.$wtline.$wtline;
+    my $design = $inrec->{'Level'};
+    $rental{'design'} = $design.$w.$w.$w.$w;
 
     # age
     my $age = 0;
 
     #$age = $time{'yyyy'} - $inrec->{'Year Built'};
     $age = localtime->year + 1900 - $inrec->{'Year Built'};
-    $rental{'age'} = $age.$wtline.$wtline;
+    $rental{'age'} = $age.$w.$w;
 
     # condition
-    $rental{'condition'} = "Average".$wtline.$wtline;
+    $rental{'condition'} = "Average".$w.$w;
 
     #-----------------------------------------
-
     # Rooms
     # From CAAR MLS:
     # Room count includes rooms on levels other than Basement.
@@ -453,21 +421,34 @@ sub process_rent_1007 {
     my $bsOther    = 0;
     my $bsRmCount  = 0;
 
-    my @rmarr = split( /,/, $inrec->{'Rooms'} );
-    my $indx  = 0;
-    my $rindx = 0;
-    my $rlim  = @rmarr - 3;
-    while ( $rindx <= $rlim ) {
-        my $rmtype = $rmarr[$rindx];
-        my $rmsz   = $rmarr[ $rindx + 1 ];
-        my $rmflr  = $rmarr[ $rindx + 2 ];
-        $rmtype =~ s/^\s+|\s+$//g;
-        $rmflr =~ s/ //g;
+    #maximum of 30 rooms
+    my $room             = '';
+    my $indx             = 0;
+    my $rindx            = 0;
+    my $rlim             = 30;
+    my $rmtype           = '';
+    my $rmflr            = '';
+    my $roomnum          = '';
+    my $roomcount        = '';
+    my $roomname         = '';
+    my $roomfieldname    = '';
+    my $roomlevfieldname = '';
+    my $roomlev          = '';
 
-        if ( $rmflr !~ /B/ ) {
-            if ( $rmtype
-                =~ /Bedroom|Breakfast|Bonus|Den|Dining|Exercise|Family|Great|Home Office|Home Theater|Kitchen|Library|Living|Master|Mud|Parlor|Rec|Sauna|Sewing|Spa|Study|Library|Sun/i
-                )
+    while ( $rindx < $rlim ) {
+        $roomcount        = sprintf( "%02d", $rindx + 1 );
+        $roomfieldname    = 'Rm'.$roomcount;
+        $roomlevfieldname = $roomfieldname.'Lv';
+        $roomname         = $inrec->{$roomfieldname};
+        $roomlev          = $inrec->{$roomlevfieldname};
+
+        $roomname =~ s/^\s+|\s+$//g;
+        $rmtype = $roomname;
+        $roomlev =~ s/ //g;
+        $rmflr = $roomlev;
+
+        if ( $rmflr !~ /Basement/ ) {
+            if ($rmtype =~ /Bedroom|Breakfast|Bonus|Den|Dining|Exercise|Family|Great|Home Office|Home Theater|Kitchen|Library|Living|Master|Mud|Parlor|Rec|Sauna|Sewing|Spa|Study|Library|Sun/i)
             {
                 $rooms++;
             }
@@ -481,7 +462,7 @@ sub process_rent_1007 {
                 $bedrooms++;
             }
         }
-        if ( $rmflr =~ /B/ ) {
+        if ( $rmflr =~ /Basement/ ) {
             if ( $rmtype =~ /Bonus|Den|Family|Great|Library|Living|Rec|Study|Library/i ) {
                 $bsRecRm++;
                 $bsRmCount++;
@@ -507,11 +488,61 @@ sub process_rent_1007 {
         }
 
         $indx++;
-        $rindx = $indx * 3;
+        $rindx++
+
+            #$rindx = $indx * 3;
 
     }
+    if ( $rooms < $bedrooms + 2 ) {
+        $rooms = $bedrooms + 2;
+    }
 
-    my $bsRmList = '';
+    my $bsRmList    = '';
+    my $bsRmListTxt = '';
+
+    #   if ( $bsRmCount > 0 ) {
+    #       if ( $bsRecRm > 0 )    { $bsRmList = $bsRecRm . "rr"; }
+    #       if ( $bsBedrooms > 0 ) { $bsRmList = $bsRmList . $bsBedrooms . "br"; }
+    #       if ( ( $bsFullbath + $bsHalfbath ) > 0 ) {
+    #           $bsRmList = $bsRmList . $bsFullbath . "." . $bsHalfbath . "ba";
+    #       }
+    #       if ( $bsOther > 0 ) { $bsRmList = $bsRmList . $bsOther . "o"; }
+    #   }
+    $bsRmList    = $bsRecRm.'rr'.$bsBedrooms.'br'.$bsFullbath.'.'.$bsHalfbath.'ba'.$bsOther.'o';
+    $bsRmListTxt = $bsRecRm.$w.$bsBedrooms.$w.$bsFullbath.'.'.$bsHalfbath.$w.$bsOther;
+
+    # Bedrooms
+    my $bedroomstot = $inrec->{'#Beds'};
+    my $bedroomsbg  = $inrec->{'#BedsBG'};
+    my $bedroomsAG  = $bedroomstot - $bedroomsbg;
+
+    #-----------------------------------------
+
+    # Baths
+    my $baths = 0;
+
+    #   if ( $fullbath == 0 ) {
+    #       $fullbath = $inrec->{'#FBaths'};
+    #       $halfbath = $inrec->{'#HBaths'};
+    #   }
+
+    $fullbath = $inrec->{'#FBaths'};
+    $halfbath = $inrec->{'#HBaths'};
+    my $bgbath = $inrec->{'#BathsBG'};
+    if ( $bgbath =~ /.5/ ) {
+        $halfbath = $halfbath - 1;
+        $bgbath   = $bgbath - 1;
+    }
+    if ( $bgbath >= 1 ) {
+        $fullbath = $fullbath - $bgbath;
+    }
+    my $bathnum = $fullbath + $halfbath / 10;
+    my $bathstr = "$fullbath.$halfbath";
+    $baths = sprintf( "%.1f", $bathnum );
+
+    #-----------------------------------------
+
+    $bsRmList = '';
     if ( $bsRmCount > 0 ) {
         if ( $bsRecRm > 0 )    { $bsRmList = $bsRecRm."rr"; }
         if ( $bsBedrooms > 0 ) { $bsRmList = $bsRmList.$bsBedrooms."br"; }
@@ -521,7 +552,7 @@ sub process_rent_1007 {
         if ( $bsOther > 0 ) { $bsRmList = $bsRmList.$bsOther."o"; }
     }
 
-    $rental{'roomcnt'} = $rooms.$wtline.$bedrooms.$wtline.$fullbath.".".$halfbath.$wtline.$wtline;
+    $rental{'roomcnt'} = $rooms.$w.$bedrooms.$w.$fullbath.".".$halfbath.$w.$w;
 
     my $sfAGFin = $inrec->{'SqFt Above Grade Fin'};
     my $sfAGTot = $inrec->{'SqFt Above Grade Total'};
@@ -540,18 +571,18 @@ sub process_rent_1007 {
 
     # gla above grade
     my $gla = $sfAGFin;
-    $rental{'gla'} = $gla.$wtline.$wtline;
+    $rental{'gla'} = $gla.$w.$w;
 
     # other line 1
     if ( $rooms == 0 ) {
-        $rental{'other1'} = $sfTotal."sf".$sfFnTot."sf".$basType.$wtline.$wtline;
+        $rental{'other1'} = $sfTotal."sf".$sfFnTot."sf".$basType.$w.$w;
     }
     else {
-        $rental{'other1'} = $sfBGTot."sf".$sfBGFin."sf".$basType.$wtline.$wtline;
+        $rental{'other1'} = $sfBGTot."sf".$sfBGFin."sf".$basType.$w.$w;
     }
 
     # other2
-    $rental{'other2'} = $bsRmList.$wtline.$wtline;
+    $rental{'other2'} = $bsRmList.$w.$w;
 
     # other3
     my $garout    = "No Garage";
@@ -559,7 +590,7 @@ sub process_rent_1007 {
     if ( $garcarnum >= 1 ) {
         $garout = $garcarnum." Car Garage";
     }
-    $rental{'other3'} = $garout.$wtline.$wtline.$wtline.$wtline;
+    $rental{'other3'} = $garout.$w.$w.$w.$w;
 
     print $outfile "\n";
     while ( my ( $key, $value ) = each(%rental) ) {
@@ -570,43 +601,43 @@ sub process_rent_1007 {
     }
     print $outfile "\n";
 
-    # 403 Valley Road Ext # ACharlottesville, VA 229031.06 miles NE2,0250.93XMLS#508911, MLS#50704308/03/2013, 09/15/2012Fry's Spring
-    # 43Above Average2,1702,1702,025531.11,085975531.11,0851,050
-    # format for 1025 rent comparables
-    tie my %rent1025 => 'Tie::IxHash',
-        address1     => '',
-        address2     => '',
-        prox         => '',
-        rent         => '',
-        rentgba      => '',
-        rentctrl     => '',
-        datasrc      => '',
-        leasedate    => '',
-        location     => '',
-        age          => '',
-        condition    => '',
-        GBA          => '';
-
-    $rent1025{'address1'}  = $address1.$wtline;
-    $rent1025{'address2'}  = $address2.$wtline;
-    $rent1025{'prox'}      = $wtline;
-    $rent1025{'rent'}      = $rentmon.$wtline;
-    $rent1025{'rentgba'}   = $wtline;
-    $rent1025{'rentctrl'}  = $wtline.'X'.$wtline;
-    $rent1025{'datasrc'}   = "MLS#".$mlnumber.$wtline;
-    $rent1025{'leasedate'} = $begindate.$wtline;
-    $rent1025{'location'}  = $location.$wtline;
-    $rent1025{'age'}       = $age.$wtline;
-    $rent1025{'condition'} = $wtline;
-    $rent1025{'GBA'}       = $sfFnTot.$wtline;
-
-    print $outfile "\n";
-    while ( my ( $key, $value ) = each(%rent1025) ) {
-        print $outfile $value;
-
-        #print $outfile "$key => $value\n";
-    }
-    print $outfile "\n";
+# 403 Valley Road Ext # ACharlottesville, VA 229031.06 miles NE2,0250.93XMLS#508911, MLS#50704308/03/2013, 09/15/2012Fry's Spring
+# 43Above Average2,1702,1702,025531.11,085975531.11,0851,050
+# format for 1025 rent comparables
+#    tie my %rent1025 => 'Tie::IxHash',
+#        address1     => '',
+#        address2     => '',
+#        prox         => '',
+#        rent         => '',
+#        rentgba      => '',
+#        rentctrl     => '',
+#        datasrc      => '',
+#        leasedate    => '',
+#        location     => '',
+#        age          => '',
+#        condition    => '',
+#        GBA          => '';
+#
+#    $rent1025{'address1'}  = $address1.$w;
+#    $rent1025{'address2'}  = $address2.$w;
+#    $rent1025{'prox'}      = $w;
+#    $rent1025{'rent'}      = $rentmon.$w;
+#    $rent1025{'rentgba'}   = $w;
+#    $rent1025{'rentctrl'}  = $w.'X'.$w;
+#    $rent1025{'datasrc'}   = "MLS#".$mlnumber.$w;
+#    $rent1025{'leasedate'} = $begindate.$w;
+#    $rent1025{'location'}  = $location.$w;
+#    $rent1025{'age'}       = $age.$w;
+#    $rent1025{'condition'} = $w;
+#    $rent1025{'GBA'}       = $sfFnTot.$w;
+#
+#    print $outfile "\n";
+#    while ( my ( $key, $value ) = each(%rent1025) ) {
+#        print $outfile $value;
+#
+#        #print $outfile "$key => $value\n";
+#    }
+#    print $outfile "\n";
 
     return 0;
 }
@@ -632,7 +663,7 @@ sub process_comp_Desktop {
     my ( $mlsrec, $outdata, $outfile ) = @_;
 
     CAAR_Resid( $mlsrec, $outdata );
-    CAAR_Resid_Text( $outdata, $outfile );
+    CAAR_Desktop( $outdata, $outfile );
 
     return 0;
 }
@@ -1163,19 +1194,20 @@ sub CAAR_Resid {
     #-----------------------------------------
 
     # Age
-    my $age = 0;
-    my $compyear = int($inrec->{'YearBuilt'});
+    my $age      = 0;
+    my $compyear = int( $inrec->{'YearBuilt'} );
     if ( $soldstatus == 0 ) {
+
         # Age calculated from year sold
         my $sdate = $inrec->{'Close Date'};
         my @da    = ( $sdate =~ m/(\d+)/g );
         $age = $da[2] - $compyear;
 
     }
+
     #elsif (( $soldstatus == 1 ) || ( $soldstatus == 2 ) || ( $soldstatus == 3 ) )
-    elsif (grep {$soldstatus eq $_} qw(1 2 3))
-    {
-        my $t = Time::Piece->new();
+    elsif ( grep { $soldstatus eq $_ } qw(1 2 3) ) {
+        my $t    = Time::Piece->new();
         my $year = $t->year;
         $age = $year - $compyear;
     }
@@ -1672,7 +1704,7 @@ sub CAAR_Resid {
     # SqFt Unfin Total
 
     my $sfAGFin = $inrec->{'AGFin'};
-    $sfAGFin =~ s/,//g ;
+    $sfAGFin =~ s/,//g;
     my $sfAGTot = $inrec->{'AGTotSF'};
     my $sfAGUnF = $inrec->{'AGUnfin'};
     my $sfBGFin = $inrec->{'BGFin'};
@@ -1689,6 +1721,8 @@ sub CAAR_Resid {
     #if ( $listdate >= $sfDate ) {
     my $basType    = "wo";
     my $basTypeTxt = "Walk-out";
+    $sfBGTot =~ s/,//;
+    $sfBGFin =~ s/,//;
     if ( $sfAGFin > 0 ) {
         $outrec->{'SqFt'} = $sfAGFin;
         if ( $sfBGTot == 0 ) {
@@ -2014,7 +2048,7 @@ sub CAAR_Resid {
         my $projectname = titleCap( $inrec->{'Subdivision'} );
         $projectname =~ s/ \(.*//;
         $outrec->{'ProjectName'} = $projectname;
-        $outrec->{'HOAFee'} = $inrec->{'AssnFee'};
+        $outrec->{'HOAFee'}      = $inrec->{'AssnFee'};
 
     }
 
@@ -2130,14 +2164,14 @@ sub CAAR_Resid_Text {
 }
 
 sub CAAR_Condo {
-    
+
     # output comparable as text file for direct copy into Total
     my ($outrec)  = shift;
     my ($outfile) = shift;
 
     my $or = $outrec;
     my $w = sprintf( '%c', 8 );
-    
+
     #CONDO
 
     # Line  Form Field                          input field
@@ -2183,11 +2217,10 @@ sub CAAR_Condo {
     #   36  22
     #   37  CvP,Deck
     #   38  1 Fireplace
- 
+
     # Additional fields requred for condo specific:
     # unit #, project name (subdivison), project phase (not available), HOA Fee
     # common elements, rec facilities
- 
 
     #pre-processing of some fields for text output
     my $uadexp1 = $or->{'FinFullNm'}.$w.$or->{'FinOther'}.$w.$or->{'Conc'};
@@ -2237,7 +2270,60 @@ sub CAAR_Condo {
     while ( my ( $key, $value ) = each(%comp) ) {
         print $outfile ($value);
     }
-    print $outfile ("\n");  
+    print $outfile ("\n");
+}
+
+sub CAAR_Desktop {
+        
+    # output comparable as text file for direct copy into Total
+    my ($outrec)  = shift;
+    my ($outfile) = shift;
+
+    my $or = $outrec;
+    my $w = sprintf( '%c', 8 );
+    
+    # Line  Form Field                          input field
+    # 1     123 Anystreet St
+    # 2     Palmyra, VA 22963
+    # 3     Proximity
+    # 4     MLS #579973; DOM 24
+    # 5     198,000
+    # 6     10/31/2018
+    # 7     1.0 Ac
+    # 8     1,500
+    # 9     32.0
+    # 10    Age 9
+    # 11    2 Car Built-in Garage
+    # 12    Bsmnt: 850sf/0sf Fin
+    # 13    CvP
+    
+        #pre-processing of some fields for text output
+    my $uadexp1 = $or->{'FinFullNm'}.$w.$or->{'FinOther'}.$w.$or->{'Conc'};
+    my $datestr = $or->{'SaleStatus'}.$w."X".$w.$w.$or->{'ContDate'}.$w.$or->{'SaleDate'}.$w.$w.$w.$w;
+    my $design  = "x".$w.$w.$w.$or->{'Stories'}.$w.$or->{'Design'}.$w.$w;
+    my $rooms   = $or->{'Rooms'}.$w.$or->{'Beds'}.$w.$or->{'Baths'}.$w.$w;
+
+    tie my %comp    => 'Tie::IxHash',
+        address1    => $or->{'Address1'}.$w,
+        address2    => $or->{'Address2'}.$w,
+        proximity   => $w,
+        datasrc     => "MLS #".$or->{'MLNumber'}."; DOM ".$or->{'DOM'}.$w,       
+        saleprice   => $or->{'SalePrice'}.$w,
+        datesale    => $or->{'DateSaleTime1'}.$w,
+        site        => $or->{'LotSize'}.$w,
+        gla         => $or->{'SqFt'}.$w,
+        bedbath     => $or->{'Beds'}.$w.$or->{'Baths'}.$w,
+        age         => $or->{'Age'}.$w,
+        garage      => $or->{'CarStorage1'}.$w;
+
+    my $x = 1;
+
+    #print $outfile "\n";
+    while ( my ( $key, $value ) = each(%comp) ) {
+        print $outfile ($value);
+    }
+    print $outfile ("\n");
+    
 }
 
 sub WTrecord {
@@ -2349,8 +2435,8 @@ sub USA_Format {
     return "\$$n";
 }
 
-sub setifdef { 
-    $_[0] = $_[1] if defined( $_[1] ) 
+sub setifdef {
+    $_[0] = $_[1] if defined( $_[1] );
 }
 
 sub hello {

@@ -167,8 +167,8 @@ sub cb1 {
     }
 
     my $cb = $self->{cbOptions};
-    print @$cb;
-    print "\n";    
+    #print @$cb;
+    #print "\n";    
     
     
     #warn "Event handler (cb1) not implemented";
@@ -358,7 +358,7 @@ sub Finish {
 sub text {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::text <event_handler>
-    warn "Event handler (text) not implemented";
+    # warn "Event handler (text) not implemented";
     $event->Skip;
     # end wxGlade
 }
