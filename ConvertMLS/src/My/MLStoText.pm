@@ -1279,6 +1279,14 @@ sub CAAR_Resid {
     my $nocp        = 1;
     my $nodw        = 1;
     my $carstortype = '';
+    my $carstorUAD = '';
+    
+    # uad expansion fields
+    my $atg = '0';
+    my $dtg = '0';
+    my $big = '0';
+    my $cpg = '0';
+    my $dwg = '0';
     my $garfeat     = $inrec->{'Garage Features'};
 
     if ( $inrec->{'Garage'} eq 'Y' ) {
@@ -1287,7 +1295,6 @@ sub CAAR_Resid {
         $garnumcar = $inrec->{'Garage#Car'};
         if ( $garnumcar =~ /(\d)/ ) {
             $garnumcar = $1;
-
             # number of cars exists, so use that number
         }
         else {
@@ -1298,12 +1305,15 @@ sub CAAR_Resid {
 
         if ( $garfeat =~ /Attached/ ) {
             $gartype = 'ga';
+            $atg = $garnumcar;
         }
         elsif ( $garfeat =~ /Detached/ ) {
             $gartype = 'gd';
+            $dtg = $garnumcar;
         }
         elsif ( $garfeat =~ /In Basement/ ) {
             $gartype = 'bi';
+            $big = $garnumcar;
         }
 
         $carstortype = $garnumcar.$gartype;
@@ -1316,6 +1326,7 @@ sub CAAR_Resid {
         $cpnumcar    = $1;
         $nocp        = 0;
         $carstortype = $carstortype.$cpnumcar.'cp';
+        $cpg = $cpnumcar;
     }
 
     if ( $garfeat =~ /On Street Parking/ ) {
@@ -1327,14 +1338,22 @@ sub CAAR_Resid {
     if ( $driveway =~ /Asphalt|Brick|Concrete|Dirt|Gravel|Riverstone/ ) {
         $dw          = '2dw';
         $carstortype = $carstortype.$dw;
+        $dwg = 2;
     }
+    
+    $carstorUAD = $w.$atg.$w.$dtg.$w.$big.$w.$cpg.$w.$dwg;
 
     if ( $nogar && $nocp && $nodw ) {
         $carstortype = 'None';
+        $carstorUAD = 'X'.$w.'0'.$w.'0'.$w.'0'.$w.'0'.$w.'0'; 
     }
 
     $outrec->{'CarStorage1'} = $carstortype;
-    $outrec->{'CarStorage1Txt'} =
+    
+    #UAD fields car storage:
+    #None, attached garage, detached garage, built-in garage, carport, driveway
+    $outrec->{'CarStorage1Txt'} = $carstorUAD;
+    
 
         #-----------------------------------------
 
@@ -1354,7 +1373,7 @@ sub CAAR_Resid {
             $cool = "CAC";
         }
         else {
-            $cool = "No CAC";
+            $cool = "NoCAC";
         }
         if ( $heating =~ /Forced Air|Furnace/i ) {
             $heat = "FWA";
@@ -1577,7 +1596,7 @@ sub CAAR_Resid {
     my $bedroomsbg  = $inrec->{'#BedsBG'};
     my $bedroomsAG  = $bedroomstot - $bedroomsbg;
 
-    $outrec->{'Beds'} = $bedrooms;
+    $outrec->{'Beds'} = $bedroomsAG;
 
     #-----------------------------------------
 
@@ -2149,7 +2168,8 @@ sub CAAR_Resid_Text {
         funcutil    => "Average".$w.$w,
         heatcool    => $or->{'CoolingType'}.$w.$w,
         energyeff   => $or->{'EnergyEfficiencies1'}.$w.$w,
-        garage      => $or->{'CarStorage1'}.$w.$w,
+        garage      => $or->{'CarStorage1'}.$w,
+        garage1     => $or->{'CarStorage1Txt'}.$w.$w,
         pchpatdk    => $or->{'FencePorchPatio2'}.$w.$w,
         fireplace   => $or->{'ExtraCompInfo1'}.$w.$w;
 
