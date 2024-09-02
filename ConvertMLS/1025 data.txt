@@ -1,0 +1,97 @@
+   # output comparable as text file for direct copy into Total
+    my ($outrec)  = shift;
+    my ($outfile) = shift;
+
+    my $or = $outrec;
+    my $w = sprintf( '%c', 8 );
+    
+    #   1   Address1: 722 Park St
+    #   2   Address2: Charlottesville, VA 22902
+    #   3   Priximaty:
+    #   4   Sale price:
+    #   5   Sale Price/Gross Bldg Area:
+    #   6   GMR:3130
+    #   7   Price Per Unit:
+    #   8   Price Per Room:
+    #   9   Price Per Bedroom:
+    #   10  Rent Control:X
+    #   11  Data Sources: CAARMLS# 543700 DOM 10
+    #   12  Verification: Tax Records
+    #   14  Sales or Financing: Cash
+    #   15  Concessions: Conc:$0
+    #   16  Date of Sale/Time: s04/16;c03/16
+    #   17  Location: 
+    #   18  Leasehold/Fee Simple: Fee Simple
+    #   19  Site: 10890 sf
+    #   20  View: Resid/Avg
+    #   21  Design: 
+    #   22  Quality: Average
+    #   23  Actual Age: 67
+    #   24  Condition: 
+    #   25  GBA: 1,960
+    #   26  Unit #1 Total, Bdrms, Baths: 521.0
+    #   27  Unit #2 Total, Bdrms, Baths: 521.0
+    #   28  Unit #1 Total, Bdrms, Baths: 
+    #   29  Unit #1 Total, Bdrms, Baths: 
+    #   30  Total Units: 21042
+    #   31  Basement Description: 980 sf
+    #   32  Basement Finished Rooms: None
+    #   33  Funcational Utility: Average
+    #   34  Heating/Cooling: FWA/CAC
+    #   35  Energy Efficient Items: StrmWnd&Drs
+    #   36  Parking: Street
+    #   37  Porch/Patio/Deck: CvPc
+    #   38  Outbuilding: Shed    
+     
+
+    #pre-processing of some fields for text output
+    my $uadexp1 = $or->{'FinFullNm'}.$w.$or->{'FinOther'}.$w.$or->{'Conc'};
+    my $datestr = $or->{'SaleStatus'}.$w."X".$w.$w.$or->{'ContDate'}.$w.$or->{'SaleDate'}.$w.$w.$w.$w;
+    my $design  = "x".$w.$w.$w.$or->{'Stories'}.$w.$or->{'Design'}.$w.$w;
+    my $rooms   = $or->{'Rooms'}.$w.$or->{'Beds'}.$w.$or->{'Baths'}.$w.$w;
+
+    tie my %comp    => 'Tie::IxHash',
+        address1    => $or->{'Address1'}.$w,
+        address2    => $or->{'Address2'}.$w,
+        citystzip   => $or->{'City'}.$w.$or->{'State'}.$w.$or->{'Zip'}.$w,
+        proximity   => $w,
+        saleprice   => $or->{'SalePrice'}.$w,
+        saleprgla   => $w,
+        priceunit   => $w,
+        priceroom   => $w,
+        pricebdrm   => $w,
+        rentctrl    => $w.'X'.$w,
+        datasrc     => $or->{'DataSource1'}.$w."CAARMLS #".$or->{'MLNumber'}.$w.$or->{'DOM'}.$w,
+        versrc      => $or->{'DataSource2'}.$w,
+        saletype    => $or->{'FinanceConcessions1'}.$w.$w,
+        finconc     => $or->{'FinanceConcessions2'}.$w.$uadexp1.$w.$w,
+        datesale    => $or->{'SaleDateFormatted'}.$w.$datestr,
+        location    => "N;Res".$w."Neutral".$w."Residential".$w.$w.$w.$w.$w,
+        lsorfeesim  => "Fee Simple".$w.$w,
+        site        => $or->{'LotSize'}.$w.$w,
+        view        => "N;Res".$w."Neutral".$w."Residential".$w.$w.$w.$w.$w,
+        designstyle => $or->{'DesignAppeal1'}.$w.$design,
+        quality     => $or->{'DesignConstrQual'}.$w.$w,
+        age         => $or->{'Age'}.$w.$w,
+        condition   => $or->{'AgeCondition1'}.$w.$w.$w,
+        roomcnt     => $rooms,
+        gla         => $or->{'SqFt'}.$w.$w,
+        basement    => $or->{'Basement1'}.$w.$or->{'Basement1Txt'}.$w.$w,
+        basementrm  => $or->{'Basement2'}.$w.$or->{'Basement2Txt'}.$w.$w,
+        funcutil    => "Average".$w.$w,
+        heatcool    => $or->{'CoolingType'}.$w.$w,
+        energyeff   => $or->{'EnergyEfficiencies1'}.$w.$w,
+        garage      => $or->{'CarStorage1'}.$w,
+        garage1     => $or->{'CarStorage1Txt'}.$w.$w,
+        pchpatdk    => $or->{'FencePorchPatio2'}.$w.$w,
+        fireplace   => $or->{'ExtraCompInfo1'}.$w.$w;
+
+    my $x = 1;
+
+    #print $outfile "\n";
+    while ( my ( $key, $value ) = each(%comp) ) {
+        print $outfile ($value);
+    }
+    print $outfile "\n";
+
+}

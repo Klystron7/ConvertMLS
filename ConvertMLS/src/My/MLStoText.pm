@@ -368,8 +368,8 @@ sub process_rent_1007 {
     # datasrc
     # ML Number
     my $mlnumber = '';
-    $mlnumber = $inrec->{'MLS #'};
-    $rental{'datasrc'} = "CAARMLS#".$mlnumber.$w."Tax Records".$w."None".$w.$w.$w.$w;
+    $mlnumber = $inrec->{'MLS#'};
+    $rental{'datasrc'} = "CAARMLS #".$mlnumber.$w."Tax Records".$w."None".$w.$w.$w.$w;
 
     # location
     my $location = '';
@@ -394,11 +394,13 @@ sub process_rent_1007 {
     my $age = 0;
 
     #$age = $time{'yyyy'} - $inrec->{'Year Built'};
-    $age = localtime->year + 1900 - $inrec->{'Year Built'};
+    #$age = localtime->year + 1900 - $inrec->{'Year Built'};
+    my $curr_year = localtime->year;
+    $age = $curr_year - $inrec->{'Year Built'};
     $rental{'age'} = $age.$w.$w;
 
     # condition
-    $rental{'condition'} = "Average".$w.$w;
+    $rental{'condition'} = "Average".$w.$w.$w;
 
     #-----------------------------------------
     # Rooms
@@ -551,21 +553,21 @@ sub process_rent_1007 {
         }
         if ( $bsOther > 0 ) { $bsRmList = $bsRmList.$bsOther."o"; }
     }
+    my $tot_rooms = 3+$bedroomstot;
+    $rental{'roomcnt'} = $tot_rooms.$w.$bedroomstot.$w.$fullbath.".".$halfbath.$w.$w;
 
-    $rental{'roomcnt'} = $rooms.$w.$bedrooms.$w.$fullbath.".".$halfbath.$w.$w;
-
-    my $sfAGFin = $inrec->{'SqFt Above Grade Fin'};
-    my $sfAGTot = $inrec->{'SqFt Above Grade Total'};
-    my $sfAGUnF = $inrec->{'SqFt Above Grade UnFin'};
-    my $sfBGFin = $inrec->{'SqFt Below Grade Fin'};
-    my $sfBGTot = $inrec->{'SqFt Below Grade Total'};
-    my $sfBGUnF = $inrec->{'SqFt Below Grade Unfin'};
-    my $sfFnTot = $inrec->{'SqFt Fin Total'};
-    my $sfGaFin = $inrec->{'SqFt Garage Fin'};
-    my $sfGaTot = $inrec->{'SqFt Garage Total'};
-    my $sfGaUnF = $inrec->{'SqFt Garage Unfin'};
-    my $sfTotal = $inrec->{'SqFt Total'};
-    my $sfUnTot = $inrec->{'SqFt Unfin Total'};
+    my $sfAGFin = $inrec->{'AGFin'};
+    my $sfAGTot = $inrec->{'AGTotSf'};
+    my $sfAGUnF = $inrec->{'AGUnfin'};
+    my $sfBGFin = $inrec->{'BGFin'};
+    my $sfBGTot = $inrec->{'BGTotSF'};
+    my $sfBGUnF = $inrec->{'BGUfin'};
+    my $sfFnTot = $inrec->{'TotFinSF'};
+    #my $sfGaFin = $inrec->{'SqFt Garage Fin'};
+    #my $sfGaTot = $inrec->{'SqFt Garage Total'};
+    #my $sfGaUnF = $inrec->{'SqFt Garage Unfin'};
+    my $sfTotal = $inrec->{'TotSf'};
+    my $sfUnTot = $inrec->{'TotUnfinSF'};
 
     my $basType = "wo";
 
@@ -586,9 +588,9 @@ sub process_rent_1007 {
 
     # other3
     my $garout    = "No Garage";
-    my $garcarnum = $inrec->{'Garage Num Cars'};
+    my $garcarnum = $inrec->{'Garage#Car'};
     if ( $garcarnum >= 1 ) {
-        $garout = $garcarnum." Car Garage";
+        $garout = int($garcarnum)." Car Garage";
     }
     $rental{'other3'} = $garout.$w.$w.$w.$w;
 
@@ -646,8 +648,8 @@ sub process_comp_1025 {
 
     my ( $mlsrec, $outdata, $outfile ) = @_;
 
-    CAAR_Resid( $mlsrec, $outdata );
-    CAAR_Resid_Text( $outdata, $outfile );
+    CAAR_MultiFam( $mlsrec, $outdata );
+    CAAR_MultiFam_Text( $outdata, $outfile );
 
     return 0;
 }
@@ -1197,12 +1199,24 @@ sub CAAR_Resid {
     my $age      = 0;
     my $compyear = int( $inrec->{'YearBuilt'} );
     if ( $soldstatus == 0 ) {
-
-        # Age calculated from year sold
+        
+        my $time_now = Time::Piece->new();
+        my $time_year = $time_now->year;
+        
         my $sdate = $inrec->{'Close Date'};
         my @da    = ( $sdate =~ m/(\d+)/g );
-        $age = $da[2] - $compyear;
-
+        
+        my $comp_act_age = $time_year - $da[2];
+        
+        if ($comp_act_age > 1 ) {
+            # if sale date is more than one year ago (dated comp sale)
+            # calculate comp age from current year
+            $age = $time_year - $compyear;
+        } else {
+            # Age calculated from year sold
+            $age = $da[2] - $compyear;
+        }
+           
     }
 
     #elsif (( $soldstatus == 1 ) || ( $soldstatus == 2 ) || ( $soldstatus == 3 ) )
@@ -2293,6 +2307,727 @@ sub CAAR_Condo {
     print $outfile ("\n");
 }
 
+sub CAAR_MultiFam {
+    my ($inrec)  = shift;
+    my ($outrec) = shift;
+
+    #my ($outfile) = shift;
+
+    # Backspace character used between fields in Wintotal
+    my $w = sprintf( '%c', 8 );
+
+    #    my $tc       = Lingua::EN::Titlecase->new("initialize titlecase");
+    #    my %addrArgs = (
+    #        country                     => 'US',
+    #        autoclean                   => 1,
+    #        force_case                  => 1,
+    #        abbreviate_subcountry       => 0,
+    #        abbreviated_subcountry_only => 1
+    #    );
+    #my $laddress = new Lingua::EN::AddressParse(%addrArgs);
+
+    my $address   = $inrec->{'Address'};
+    my $streetnum = '';
+
+    # Street Number
+    if ( $address =~ /(\d+)/ ) {
+        $streetnum = $1;
+    }
+    $outrec->{'StreetNum'} = $streetnum;
+
+    #-----------------------------------------
+
+    $outrec->{'StreetDir'} = '';
+
+    #-----------------------------------------
+
+    #my $addrTC = $tc->title( $inrec->{'Address'} );
+    my $addrTC = titleCap( $inrec->{'Address'} );
+    $outrec->{'Address1'} = $addrTC;
+
+    print( $outrec->{'Address1'} );
+    print "\n";
+
+    #-----------------------------------------
+
+    # Address 2
+    my $city = $inrec->{'City'};
+
+    #$city = $tc->title($city);
+    $city = titleCap( $inrec->{'City'} );
+    $city =~ s/\(.*//;
+    $city =~ s/\s+$//;
+    my $address2 = $city.", "."VA ".$inrec->{'Zip'};
+    $outrec->{'Address2'} = $address2;
+
+    #-----------------------------------------
+
+    # Address 3
+    my $address3 = "VA"." ".$inrec->{'Zip'};
+    $outrec->{'Address3'} = $address3;
+
+    #-----------------------------------------
+
+    # City
+    $outrec->{'City'} = $city;
+
+    #-----------------------------------------
+
+    # State
+    $outrec->{'State'} = "VA";
+
+    #-----------------------------------------
+
+    # Zip
+    $outrec->{'Zip'} = $inrec->{'Zip'};
+
+    #-----------------------------------------
+
+    # SalePrice
+    my $soldstatus = 0;
+    my $soldprice  = 0;
+    my $recstatus  = $inrec->{'Status'};
+    if ( $recstatus eq 'SLD' ) {
+        $soldstatus = 0;                        #sold
+        $soldprice  = $inrec->{'Sold Price'};
+        $soldprice =~ s/\s+$//;
+    }
+    elsif ( $recstatus =~ m /ACT/i ) {
+        $soldstatus = 1;                        #Active
+        $soldprice  = $inrec->{'Price'};
+    }
+    elsif ( $recstatus =~ m /PND/i ) {
+        $soldstatus = 2;                        #Pending
+        $soldprice  = $inrec->{'Price'};
+    }
+    elsif ( $recstatus =~ m /CNT/i ) {
+        $soldstatus = 3;                        #Contingent
+        $soldprice  = $inrec->{'Price'};
+    }
+    elsif ( $recstatus =~ m /EXP/i ) {
+        $soldstatus = 4;                        #Withdrawn
+        $soldprice  = $inrec->{'Price'};
+    }
+    else {
+
+        #nothing
+    }
+    $outrec->{'SalePrice'} = $soldprice;
+
+    #-----------------------------------------
+
+    # SoldStatus
+    $outrec->{'Status'} = $soldstatus;
+
+    #-----------------------------------------
+
+    # DataSource1
+    my $datasrc = "CAARMLS #".$inrec->{'MLS#'}.";DOM ".$inrec->{'DOM'};
+    $outrec->{'DataSource1'} = $datasrc;
+    $outrec->{'DOM'}         = $inrec->{'DOM'};
+
+    #-----------------------------------------
+
+    # Data Source 2
+    $outrec->{'DataSource2'} = "Tax Records";
+
+    #-----------------------------------------
+
+    # Finance Concessions Line 1
+    # REO       REO sale
+    # Short     Short sale
+    # CrtOrd    Court ordered sale
+    # Estate    Estate sale
+    # Relo      Relocation sale
+    # NonArm    Non-arms length sale
+    # ArmLth    Arms length sale
+    # Listing   Listing
+
+    my $finconc1 = '';
+    if ( $soldstatus == 0 ) {
+
+        #my $agentnotes = $inrec->{'Agent Notes'};
+        my $agentnotes = '';
+
+        if ( $inrec->{'Foreclosur'} =~ /Yes/i ) {
+            $finconc1 = "REO";
+        }
+        elsif ( $inrec->{'LenderOwn'} =~ /Yes/i ) {
+            $finconc1 = "REO";
+        }
+        elsif ( $inrec->{'ShortSale'} =~ /Yes/i ) {
+            $finconc1 = "Short";
+        }
+        elsif ( $agentnotes =~ /court ordered /i ) {
+            $finconc1 = "CrtOrd";
+        }
+        elsif ( $agentnotes =~ /estate sale /i ) {
+            $finconc1 = "Estate";
+        }
+        elsif ( $agentnotes =~ /relocation /i ) {
+            $finconc1 = "Relo";
+        }
+        else {
+            $finconc1 = "ArmLth";
+        }
+    }
+    elsif ( $soldstatus == 1 ) {
+        $finconc1 = "Listing";
+    }
+    elsif ( $soldstatus == 2 ) {
+        $finconc1 = "Listing";
+    }
+    elsif ( $soldstatus == 3 ) {
+        $finconc1 = "Listing";
+    }
+    else {
+        $finconc1 = '';
+    }
+    $outrec->{'FinanceConcessions1'} = $finconc1;
+
+    #-----------------------------------------
+
+    # FinanceConcessions2
+    # Type of financing:
+    # FHA       FHA
+    # VA        VA
+    # Conv      Conventional
+    # Seller    Seller
+    # Cash      Cash
+    # RH        Rural Housing
+    # Other
+    # Format: 12 Char maximum
+
+    my $finconc2    = '';
+    my $conc        = '';
+    my $finconc2out = '';
+    my $finOther    = '';
+    my $finFullNm   = '';
+
+    if ( $soldstatus == 0 ) {
+        my $terms = $inrec->{'How Sold'};
+        if ( $terms =~ /NOTSP/ig ) {
+            $finconc2  = "NotSpec";
+            $finFullNm = "Other (describe)";
+            $finOther  = "NotSpec";            #Not Specified
+        }
+        elsif ( $terms =~ /CASH/ig ) {
+            $finconc2  = "Cash";
+            $finFullNm = "Cash";
+        }
+        elsif ( $terms =~ /CNVFI/ig ) {
+            $finconc2  = "Conv";
+            $finFullNm = "Conventional";
+        }
+        elsif ( $terms =~ /CNVAR/ig ) {
+            $finconc2  = "Conv";
+            $finFullNm = "Conventional";
+        }
+        elsif ( $terms =~ /FHA/ig ) {
+            $finconc2  = "FHA";
+            $finFullNm = "FHA";
+        }
+        elsif ( $terms =~ /VHDA/ig ) {
+            $finconc2  = "VHDA";
+            $finFullNm = "Other (describe)";
+            $finOther  = "VHDA";
+        }
+        elsif ( $terms =~ /FHMA/ig ) {
+            $finconc2  = "FHMA";
+            $finFullNm = "Other (describe)";
+            $finOther  = "FHMA";
+        }
+        elsif ( $terms =~ /VA/ig ) {
+            $finconc2  = "VA";
+            $finFullNm = "VA";
+        }
+        elsif ( $terms =~ /ASMMT/ig ) {
+            $finconc2  = "AsmMtg";
+            $finFullNm = "Other (describe)";
+            $finOther  = "AsmMtg";
+        }
+        elsif ( $terms =~ /PVTMT/ig ) {
+            $finconc2  = "PrvMtg";
+            $finFullNm = "Other (describe)";
+            $finOther  = "PrvMtg";
+        }
+        elsif ( $terms =~ /OWNFN/ig ) {
+            $finconc2  = "Seller";
+            $finFullNm = "Seller";
+        }
+        elsif ( $terms =~ /OTHER/ig ) {
+            $finconc2  = "NotSpec";
+            $finFullNm = "Other (describe)";
+            $finOther  = "NotSpec";
+        }
+        elsif ( $terms =~ /USDAR/ig ) {
+            $finconc2  = "RH";
+            $finFullNm = "USDA - Rural housing";
+        }
+        else {
+            $finconc2  = "NotSpec";
+            $finFullNm = "Other (describe)";
+            $finOther  = "NotSpec";
+        }
+
+        $conc = 0;
+        if ( $inrec->{'AddSlrCrdt'} ) {
+            $conc = USA_Format( $inrec->{'AddSlrCrdt'} );
+            $conc =~ s/$//;
+            $conc = $inrec->{'SellerConc'};
+        }
+        #$finconc2out = $finconc2.";".$conc;
+        $finconc2out = 'Conc:'.$conc;
+    }
+
+    $outrec->{'FinanceConcessions2'} = $finconc2out;
+    $outrec->{'FinConc'}             = $finconc2;
+    $outrec->{'FinFullNm'}           = $finFullNm;
+    $outrec->{'FinOther'}            = $finOther;
+    $outrec->{'Conc'}                = $conc;
+
+    #-----------------------------------------
+
+    # DateSaleTime1
+    my $datesaletime1 = '';
+    if ( $soldstatus == 0 ) {
+        $datesaletime1 = $inrec->{'Close Date'};
+    }
+    else {
+        $datesaletime1 = $inrec->{'Lst Date'};
+    }
+    my $dateonly = '';
+    if ( $datesaletime1 =~ m/((0?[1-9]|1[012])\/(0?[1-9]|[12][0-9]|3[01])\/(19|20)\d\d)/ ) {
+        $dateonly = $1;
+    }
+    $outrec->{'DateSaleTime1'} = $dateonly;
+
+    #-----------------------------------------
+
+    # DateSaleTime2
+    my $datesaletime2 = '';
+    if ( $soldstatus == 0 ) {
+        my $sdate = $inrec->{'Close Date'};
+        my @da    = ( $sdate =~ m/(\d+)/g );
+        $datesaletime2 = $da[2]."/".$da[0]."/".$da[1];
+
+        #time_manip('yyyy/mm/dd', $sdate );
+    }
+    $outrec->{'DateSaleTime2'} = $datesaletime2;
+
+    #-----------------------------------------
+    # SaleDateFormatted
+    # Sale and Contract formatted as mm/yy
+    my ( $sdatestr, $cdatestr, $wsdatestr, $wcdatestr, $fulldatestr, $salestatus, $cdate ) = ('') x 7;
+
+    if ( $soldstatus == 0 ) {
+        my $sdate = $inrec->{'Close Date'};
+        my @da    = ( $sdate =~ m/(\d+)/g );
+
+        #my $m2digit = sprintf("%02d", $da[0]);
+        my $m2digit  = sprintf( "%02d", $da[0] );
+        my $yr2digit = sprintf( "%02d", $da[2] % 100 );
+        $sdatestr  = "s".$m2digit."/".$yr2digit;
+        $wsdatestr = $m2digit."/".$yr2digit;
+
+        setifdef( $cdate, $inrec->{'Cont Date'} );
+        my @cnda = ( $cdate =~ m/(\d+)/g );
+        unless ( check_date( $cnda[2], $cnda[0], $cnda[1] ) ) {
+            $cdatestr = "Unk";
+        }
+        else {
+            my @da       = ( $cdate =~ m/(\d+)/g );
+            my $m2digit  = sprintf( "%02d", $da[0] );
+            my $yr2digit = sprintf( "%02d", $da[2] % 100 );
+            $cdatestr  = "c".$m2digit."/".$yr2digit;
+            $wcdatestr = $m2digit."/".$yr2digit;
+        }
+        $fulldatestr            = $sdatestr.";".$cdatestr;
+        $outrec->{'SaleStatus'} = "Settled sale";
+        $outrec->{'SaleDate'}   = $wsdatestr;
+        $outrec->{'ContDate'}   = $wcdatestr;
+
+    }
+    elsif (( $soldstatus == 1 )
+        || ( $soldstatus == 2 )
+        || ( $soldstatus == 3 ) )
+    {
+        $fulldatestr = "Active";
+        $outrec->{'SaleStatus'} = "Active";
+    }
+
+    #$outrec->{'CloseDate'} = $wsdatestr;
+    #$outrec->{'ContrDate'} = $wcdatestr;
+
+    #$fulldatestr = 's12/11;c11/11';
+    #$outrec->{'SaleDateFormatted'} = $fulldatestr;
+    $outrec->{'SaleDateFormatted'} = $inrec->{'Close Date'};
+
+    #-----------------------------------------
+
+    # Location
+    # N - Neutral, B - Beneficial, A - Adverse
+    # Res       Residential
+    # Ind       Industrial
+    # Comm      Commercial
+    # BsyRd     Busy Road
+    # WtrFr     Water Front
+    # GlfCse    Golf Course
+    # AdjPrk    Adjacent to Park
+    # AdjPwr    Adjacent to Power Lines
+    # LndFl     Landfill
+    # PubTrn    Public Transportation
+
+    # basic neutral residential
+    my $loc1    = "N";
+    my $loc2    = "Res";
+    my $loc3    = '';
+    my $fullLoc = $loc1.";".$loc2;
+
+    # special cases
+    #   my $spLoc;
+    #   $spLoc =~ s/Wintergreen Mountain Village/Wintergreen Mtn/ig;
+    #   $location =~ s/1800 Jefferson Park Ave/Charlottesville/ig;
+    #   my $fullLoc = $loc1 . ";" . $loc2;
+
+    $outrec->{'Location1'} = $fullLoc;
+
+    # Original Non-UAD Location
+    #   my $location;
+    #   my $subdiv;
+    #
+    #   $subdiv = $inrec->{'Subdivision'};
+    #   if ( $subdiv =~ m/NONE/ig ) {
+    #       $location = $tc->title($city);
+    #   } else {
+    #       $subdiv =~ s/`/'/;
+    #       $subdiv = $tc->title($subdiv);
+    #       $subdiv =~ s/\(.*//;
+    #       $subdiv =~ s/\s+$//;
+    #       $location = $subdiv;
+    #   }
+    #   $location =~ s/Wintergreen Mountain Village/Wintergreen Mtn/ig;
+    #   $location =~ s/1800 Jefferson Park Ave/Charlottesville/ig;
+    #
+    #   $outrec->{'Location1'} = $location;
+
+    #-----------------------------------------
+
+    # PropertyRights
+    $outrec->{'PropertyRights'} = "Fee Simple";
+
+    #-----------------------------------------
+
+    # Site
+    # MLS: LotSize
+    my $acres      = $inrec->{'Acres #'};
+    my $acresuffix = '';
+    my $outacres   = '';
+    if ( $acres < 0.001 ) {
+        $outacres = '';
+    }
+    if ( ( $acres > 0.001 ) && ( $acres < 1.0 ) ) {
+        my $acresf = $acres * 43560;
+        $outacres = sprintf( "%.0f", $acresf );
+        $acresuffix = " sf";
+    }
+    if ( $acres >= 1.0 ) {
+        $outacres = sprintf( "%.2f", $acres );
+        $acresuffix = " ac";
+    }
+    $outrec->{'LotSize'} = $outacres.$acresuffix;
+
+    #-----------------------------------------
+
+    # View
+    # N - Neutral, B - Beneficial, A - Adverse
+    # Wtr       Water View
+    # Pstrl     Pastoral View
+    # Woods     Woods View
+    # Park      Park View
+    # Glfvw     Golf View
+    # CtySky    City View Skyline View
+    # Mtn       Mountain View
+    # Res       Residential View
+    # CtyStr    CtyStr
+    # Ind       Industrial View
+    # PwrLn     Power Lines
+    # LtdSght   Limited Sight
+
+    # MLS LotView
+    # Blue Ridge | Garden | Golf | Mountain | Pastoral | Residential | Water | Woods
+    # Water properties: Bay/Cove | Irrigation | Pond/Lake | Pond/Lake Site | River | Spring | Stream/Creek
+
+    my $view1    = "N";
+    my $view2    = 'Res';
+    my $view3    = '';
+    my $fullView = '';
+
+    my $MLSview = $inrec->{'View'};
+    if ( $MLSview =~ /Blue Ridge|Mountain/ig ) {    #View-Blue Ridge
+        $view3 = "Mtn";
+    }
+    elsif ( $MLSview =~ /Pastoral|Garden/ ) {       #View-Pastoral
+        $view3 = "Pstrl";
+    }
+    elsif ( $MLSview =~ /Water/ ) {                 #View-Water
+        $view3 = "Wtr";
+    }
+    elsif ( $MLSview =~ /Woods/ ) {                 #View-Woods
+        $view3 = "Woods";
+    }
+
+    # Analyze view according to area
+    # Cville
+
+    # Albemarle
+
+    # Nelson
+
+    # Fluvanna
+
+    $fullView = $view1.";".$view2.";".$view3;
+    $outrec->{'LotView'} = $fullView;
+
+    #-----------------------------------------
+
+    # DesignAppeal
+
+    my $stories    = "";
+    my $design     = "";
+    my $design_uad = '';
+    my $storynum   = '';
+    my $proptype   = $inrec->{'PropType'};
+    my $atthome    = $inrec->{'Attached Home'};
+    $stories = $inrec->{'Level'};
+
+    # Street Number
+    #$stories =~ s/\D//;
+    $stories =~ s/[^0-9\.]//ig;
+    $outrec->{'Stories'} = $stories;
+
+    my $designFullName = $inrec->{'Design'};
+    $design = $designFullName;
+    if ( $designFullName =~ /Arts & Crafts/ig ) {
+        $design = "Craftsman";
+    }
+    elsif ( $designFullName =~ /Contemporary/ig ) {
+        $design = "Contemp";
+    }
+
+    $design =~ tr/ //ds;
+    if ( $proptype =~ /Detached/ig ) {
+        $design_uad = 'DT'.$stories.';'.$design;
+    }
+    elsif ( $proptype =~ /Attached/ig ) {
+        if ( $atthome =~ /End Unit/ig ) {
+            $design_uad = 'SD'.$stories.';'.$design;
+        }
+        elsif ( $atthome =~ /Duplex/ig ) {
+            $design_uad = 'SD'.$stories.';'.$design;
+        }
+        else {
+            $design_uad = 'AT'.$stories.';'.$design;
+        }
+    }
+    $outrec->{'Design'}        = $design;
+    $outrec->{'Design'}        = $inrec->{'PropType'};
+    $outrec->{'DesignAppeal1'} = $design_uad;
+
+    #-----------------------------------------
+
+    # Age
+    my $age      = 0;
+    my $compyear = int( $inrec->{'YearBuilt'} );
+    if ( $soldstatus == 0 ) {
+        
+        my $time_now = Time::Piece->new();
+        my $time_year = $time_now->year;
+        
+        my $sdate = $inrec->{'Close Date'};
+        my @da    = ( $sdate =~ m/(\d+)/g );
+        
+        my $comp_act_age = $time_year - $da[2];
+        
+        if ($comp_act_age > 1 ) {
+            # if sale date is more than one year ago (dated comp sale)
+            # calculate comp age from current year
+            $age = $time_year - $compyear;
+        } else {
+            # Age calculated from year sold
+            $age = $da[2] - $compyear;
+        }
+           
+    }
+
+    #elsif (( $soldstatus == 1 ) || ( $soldstatus == 2 ) || ( $soldstatus == 3 ) )
+    elsif ( grep { $soldstatus eq $_ } qw(1 2 3) ) {
+        my $t    = Time::Piece->new();
+        my $year = $t->year;
+        $age = $year - $compyear;
+    }
+    $outrec->{'Age'} = $age;
+
+    #-----------------------------------------
+
+    # unit rooms
+    $outrec->{'u1br'} = $inrec->{'U1#Beds'};
+    $outrec->{'u1ba'} = $inrec->{'U1#Bath'};
+    if ($outrec->{'u1br'} ne '') {
+        $outrec->{'u1rm'} = $inrec->{'U1#Beds'} + 3;
+    }
+    $outrec->{'u2br'} = $inrec->{'U2#Beds'};
+    $outrec->{'u2ba'} = $inrec->{'U2#Bath'};
+    if ($outrec->{'u2br'} ne '') {
+        $outrec->{'u2rm'} = $inrec->{'U2#Beds'} + 3;
+    }
+    $outrec->{'u3br'} = $inrec->{'U3#Beds'};
+    $outrec->{'u3ba'} = $inrec->{'U3#Bath'};
+    if ($outrec->{'u3br'} ne '') {
+        $outrec->{'u3rm'} = $inrec->{'U3#Beds'} + 3;
+    }
+    $outrec->{'u4br'} = $inrec->{'U4#Beds'};
+    $outrec->{'u4ba'} = $inrec->{'U4#Bath'};
+    if ($outrec->{'u4br'} ne '') {
+        $outrec->{'u4rm'} = $inrec->{'U4#Beds'} + 3;
+    }
+    
+    $outrec->{'utotu'} = $inrec->{'Units #'};
+    $outrec->{'utotrm'} = $outrec->{'u1rm'} + $outrec->{'u2rm'} + $outrec->{'u3rm'} + $outrec->{'u4rm'};
+    $outrec->{'utotbr'} = $outrec->{'u1br'} + $outrec->{'u2br'} + $outrec->{'u3br'} + $outrec->{'u4br'};
+    $outrec->{'utotba'} = $outrec->{'u1ba'} + $outrec->{'u2ba'} + $outrec->{'u3ba'} + $outrec->{'u4ba'};
+    
+    my $grossRent = $inrec->{'Gross Rent'};
+    if ($grossRent > 10000) {
+        $grossRent = $grossRent/12;
+    }
+    
+    $outrec->{'GrossRent'} = $grossRent;
+    
+    #-----------------------------------------   
+    
+    # CoolingType
+    $outrec->{'CoolingType'} = "FWA/CAC";
+
+    #-----------------------------------------
+
+    #23 FunctionalUtility
+    $outrec->{'FunctionalUtility'} = "Average";
+
+    #-----------------------------------------
+    
+    $outrec->{'SqFt'} = $inrec->{'TotFinSF'};
+
+   
+
+}
+    
+sub CAAR_MultiFam_Text {
+
+    # output comparable as text file for direct copy into Total
+    my ($outrec)  = shift;
+    my ($outfile) = shift;
+
+    my $or = $outrec;
+    my $w = sprintf( '%c', 8 );
+    
+    #   1   Address1: 722 Park St
+    #   2   Address2: Charlottesville, VA 22902
+    #   3   Priximaty:
+    #   4   Sale price:
+    #   5   Sale Price/Gross Bldg Area:
+    #   6   GMR:3130
+    #   7   Price Per Unit:
+    #   8   Price Per Room:
+    #   9   Price Per Bedroom:
+    #   10  Rent Control:X
+    #   11  Data Sources: CAARMLS# 543700 DOM 10
+    #   12  Verification: Tax Records
+    #   14  Sales or Financing: Cash
+    #   15  Concessions: Conc:$0
+    #   16  Date of Sale/Time: s04/16;c03/16
+    #   17  Location: 
+    #   18  Leasehold/Fee Simple: Fee Simple
+    #   19  Site: 10890 sf
+    #   20  View: Resid/Avg
+    #   21  Design: 
+    #   22  Quality: Average
+    #   23  Actual Age: 67
+    #   24  Condition: 
+    #   25  GBA: 1,960
+    #   26  Unit #1 Total, Bdrms, Baths: 521.0
+    #   27  Unit #2 Total, Bdrms, Baths: 521.0
+    #   28  Unit #1 Total, Bdrms, Baths: 
+    #   29  Unit #1 Total, Bdrms, Baths: 
+    #   30  Total Units: 21042
+    #   31  Basement Description: 980 sf
+    #   32  Basement Finished Rooms: None
+    #   33  Funcational Utility: Average
+    #   34  Heating/Cooling: FWA/CAC
+    #   35  Energy Efficient Items: StrmWnd&Drs
+    #   36  Parking: Street
+    #   37  Porch/Patio/Deck: CvPc
+    #   38  Outbuilding: Shed    
+     
+
+    #pre-processing of some fields for text output
+    my $uadexp1 = $or->{'FinFullNm'}.$w.$or->{'FinOther'}.$w.$or->{'Conc'};
+    my $datestr = $or->{'SaleStatus'}.$w."X".$w.$w.$or->{'ContDate'}.$w.$or->{'SaleDate'}.$w.$w.$w.$w;
+    my $design  = "x".$w.$w.$w.$or->{'Stories'}.$w.$or->{'Design'}.$w.$w;
+    my $rooms   = $or->{'Rooms'}.$w.$or->{'Beds'}.$w.$or->{'Baths'}.$w.$w;
+    
+    #citystzip   => $or->{'City'}.$w.$or->{'State'}.$w.$or->{'Zip'}.$w,
+
+    tie my %comp    => 'Tie::IxHash',
+        address1    => $or->{'Address1'}.$w,
+        address2    => $or->{'Address2'}.$w,
+        proximity   => $w,
+        saleprice   => $or->{'SalePrice'}.$w,
+        saleprgla   => $w,       
+        GRM         => $or->{'GrossRent'}.$w.$w,
+        priceunit   => $w,
+        priceroom   => $w,
+        pricebdrm   => $w,
+        rentctrl    => $w.'X'.$w,
+        datasrc     => $or->{'DataSource1'}.$w,
+        versrc      => $or->{'DataSource2'}.$w,
+        saletype    => $or->{'FinanceConcessions1'}.$w.$w,
+        finconc     => $or->{'FinanceConcessions2'}.$w.$w,
+        datesale    => $or->{'SaleDateFormatted'}.$w.$w,
+        location    => $w.$w,
+        lsorfeesim  => "Fee Simple".$w.$w,
+        site        => $or->{'LotSize'}.$w.$w,
+        view        => "Resid/Avg".$w.$w,
+        designstyle => $or->{'Design'}.$w.$w,
+        quality     => $w.$w,
+        age         => $or->{'Age'}.$w.$w,
+        condition   => $w.$w,
+        gla         => $or->{'SqFt'}.$w.$w,
+        unit1       => $or->{'u1rm'}.$w.$or->{'u1br'}.$w.$or->{'u1ba'}.$w.$w,
+        unit2       => $or->{'u2rm'}.$w.$or->{'u2br'}.$w.$or->{'u2ba'}.$w.$w,
+        unit3       => $or->{'u3rm'}.$w.$or->{'u3br'}.$w.$or->{'u3ba'}.$w.$w,
+        unit4       => $or->{'u4rm'}.$w.$or->{'u4br'}.$w.$or->{'u4ba'}.$w.$w,
+        totalunits  => $or->{'utotu'}.$w.$or->{'utotrm'}.$w.$or->{'utotbr'}.$w.$or->{'utotba'}.$w.$w,
+        basement    => $w.$w,
+        basementrm  => $w.$w,
+        funcutil    => "Average".$w.$w,
+        heatcool    => $w.$w,
+        energyeff   => $w.$w,
+        garage      => $w.$w,
+        garage1     => $w.$w,
+        pchpatdk    => $w.$w,
+        fireplace   => $w.$w;
+
+    my $x = 1;
+
+    #print $outfile "\n";
+    while ( my ( $key, $value ) = each(%comp) ) {
+        print $outfile ($value);
+    }
+    print $outfile "\n";
+
+}
+
 sub CAAR_Desktop {
         
     # output comparable as text file for direct copy into Total
@@ -2423,7 +3158,29 @@ sub WTrecord {
         SaleDate            => '',
         ContDate            => '',
         Stories             => '',
-        Design              => '';
+        Design              => '',
+        u1rm                => '',        
+        u1br                => '',
+        u1ba                => '',
+        u1sf                => '',
+        u2rm                => '',        
+        u2br                => '',
+        u2ba                => '',
+        u2sf                => '',
+        u3rm                => '',        
+        u3br                => '',
+        u3ba                => '',
+        u3sf                => '',
+        u4rm                => '',        
+        u4br                => '',
+        u4ba                => '',
+        u4sf                => '',
+        utotu               => '',
+        utotrm              => '',
+        utotbr              => '',
+        utotba              => '',
+        grossrent           => '';
+        
 
     #DOM                 => '',
     #CloseDate           => '',
