@@ -22,6 +22,7 @@ use strict;
 use Data::Dumper qw(Dumper);
 
 #use My::ConvertMLS qw(DoConvert);
+<<<<<<< HEAD
 
 use lib "C:\\Users\\Ernest\\git\\ConvertMLS\\src";
 use My::MLStoText qw(DoConvert);
@@ -42,6 +43,25 @@ sub new {
     $self = $self->SUPER::new( $parent, $id, $title, $pos, $size, $style, $name );
     $self->SetSize(Wx::Size->new(598, 445));
     #$self->SetSize(Wx::Size->new(610, 400));
+=======
+use My::MLStoText qw(DoConvert);
+
+sub new {
+    my( $self, $parent, $id, $title, $pos, $size, $style, $name ) = @_;
+    $parent = undef              unless defined $parent;
+    $id     = -1                 unless defined $id;
+    $title  = "Convert MLS"      unless defined $title;
+    $pos    = wxDefaultPosition  unless defined $pos;
+    $size   = wxDefaultSize      unless defined $size;
+    $name   = ""                 unless defined $name;
+
+    # begin wxGlade: MyFrame::new
+    $style = wxDEFAULT_FRAME_STYLE
+        unless defined $style;
+
+    $self = $self->SUPER::new( $parent, $id, $title, $pos, $size, $style, $name );
+    $self->SetSize(Wx::Size->new(598, 445));
+>>>>>>> branch 'master' of https://github.com/Klystron7/ConvertMLS.git
     $self->{panel_1} = Wx::Panel->new($self, wxID_ANY);
     $self->{checkbox_1004} = Wx::CheckBox->new($self->{panel_1}, wxID_ANY, "");
     $self->{checkbox_1073} = Wx::CheckBox->new($self->{panel_1}, wxID_ANY, "");

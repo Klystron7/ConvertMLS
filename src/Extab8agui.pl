@@ -20,7 +20,10 @@ use Wx qw[:everything];
 use base qw(Wx::Frame);
 use strict;
 
+<<<<<<< HEAD
 use lib "C:\\Users\\Ernest\\git\\ConvertMLS\\src";
+=======
+>>>>>>> branch 'master' of https://github.com/Klystron7/ConvertMLS.git
 use My::ConvertMLS qw(DoConvert);
 
 sub new {
