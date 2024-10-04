@@ -20,6 +20,7 @@ use Wx qw[:everything];
 use base qw(Wx::Frame);
 use strict;
 
+use lib "C:\\Users\\Ernest\\git\\ConvertMLS\\src";
 use My::ConvertMLS qw(DoConvert);
 
 sub new {

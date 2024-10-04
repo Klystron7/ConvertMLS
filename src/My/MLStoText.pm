@@ -5,6 +5,7 @@ use warnings;
 use Exporter qw(import);
 our @EXPORT_OK = qw(DoConvert);
 
+use Time::Piece;
 use File::Basename qw( fileparse );
 use Tie::IxHash();
 use Text::RecordParser();
@@ -957,12 +958,23 @@ sub CAAR_Resid {
     else {
         $datesaletime1 = $inrec->{'Lst Date'};
     }
+    
+    # without leading zeros in the date
     my $dateonly = '';
     if ( $datesaletime1 =~ m/((0?[1-9]|1[012])\/(0?[1-9]|[12][0-9]|3[01])\/(19|20)\d\d)/ ) {
         $dateonly = $1;
     }
     $outrec->{'DateSaleTime1'} = $dateonly;
-
+    	
+	if ($datesaletime1 =~ m{(0?[1-9]|1[012])/(0?[1-9]|[12][0-9]|3[01])/((19|20)\d\d)}) {
+	    my ($month, $day, $year) = ($1, $2, $3);
+	    $month = sprintf("%02d", $month);
+	    $day = sprintf("%02d", $day);
+	    $dateonly = "$month/$day/$year";
+    print "$dateonly\n"; # Just to check the output
+	}
+	$outrec->{'DateSaleTime1'} = $dateonly;
+	
     #-----------------------------------------
 
     # DateSaleTime2
@@ -3057,19 +3069,35 @@ sub CAAR_Desktop {
     my $datestr = $or->{'SaleStatus'}.$w."X".$w.$w.$or->{'ContDate'}.$w.$or->{'SaleDate'}.$w.$w.$w.$w;
     my $design  = "x".$w.$w.$w.$or->{'Stories'}.$w.$or->{'Design'}.$w.$w;
     my $rooms   = $or->{'Rooms'}.$w.$or->{'Beds'}.$w.$or->{'Baths'}.$w.$w;
+    my $bsmntrm = $outrec->{'Basement2'};
+    if ($outrec->{'Basement2'}  =~ /\Q$w\E/) {
+    	$bsmntrm = 0;
+	}
 
     tie my %comp    => 'Tie::IxHash',
         address1    => $or->{'Address1'}.$w,
         address2    => $or->{'Address2'}.$w,
         proximity   => $w,
-        datasrc     => "MLS #".$or->{'MLNumber'}."; DOM ".$or->{'DOM'}.$w,       
         saleprice   => $or->{'SalePrice'}.$w,
-        datesale    => $or->{'DateSaleTime1'}.$w,
-        site        => $or->{'LotSize'}.$w,
-        gla         => $or->{'SqFt'}.$w,
-        bedbath     => $or->{'Beds'}.$w.$or->{'Baths'}.$w,
-        age         => $or->{'Age'}.$w,
-        garage      => $or->{'CarStorage1'}.$w;
+        pricesgla	=> $w,
+        datasrc     => "MLS #".$or->{'MLNumber'}."; DOM ".$or->{'DOM'}.$w,
+        saletype    => $or->{'FinanceConcessions1'}.';'.$or->{'FinanceConcessions2'}.$w.$w,     
+        datesale    => $or->{'DateSaleTime1'}.$w.$w,
+        location    => "N;Res".$w.$w,  
+        site        => $or->{'LotSize'}.$w.$w,
+        view	    => "N;Res".$w.$w, 
+        designstyle => $or->{'DesignAppeal1'}.$w.$w,
+        quality     => $w.$w, #$or->{'DesignConstrQual'}.$w.$w,
+        age         => $or->{'Age'}.$w.$w,
+        condition   => $or->{'AgeCondition1'}.$w.$w.$w,
+        roomtot		=> $or->{'Rooms'}.$w,
+        bedbath     => $or->{'Beds'}.$w.$or->{'Baths'}.$w.$w,         
+        gla         => $or->{'SqFt'}.$w.$w,
+        basement    => $or->{'Basement1'}.$w.$w,
+        basementrm  => $bsmntrm.$w.$w,
+        funcutil    => "Average".$w.$w,
+        heatcool    => $or->{'CoolingType'}.$w.$w,       
+        garage      => $or->{'CarStorage1'}.$w.$w;
 
     my $x = 1;
 

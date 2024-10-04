@@ -22,6 +22,8 @@ use strict;
 use Data::Dumper qw(Dumper);
 
 #use My::ConvertMLS qw(DoConvert);
+
+use lib "C:\\Users\\Ernest\\git\\ConvertMLS\\src";
 use My::MLStoText qw(DoConvert);
 
 sub new {
@@ -39,6 +41,7 @@ sub new {
 
     $self = $self->SUPER::new( $parent, $id, $title, $pos, $size, $style, $name );
     $self->SetSize(Wx::Size->new(598, 445));
+    #$self->SetSize(Wx::Size->new(610, 400));
     $self->{panel_1} = Wx::Panel->new($self, wxID_ANY);
     $self->{checkbox_1004} = Wx::CheckBox->new($self->{panel_1}, wxID_ANY, "");
     $self->{checkbox_1073} = Wx::CheckBox->new($self->{panel_1}, wxID_ANY, "");
